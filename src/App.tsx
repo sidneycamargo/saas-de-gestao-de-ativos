@@ -5,6 +5,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from './components/Layout'
 import DashboardLayout from './components/layouts/DashboardLayout'
 import Index from './pages/Index'
+import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
@@ -21,6 +23,8 @@ const App = () => (
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Index />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Hexagon, Lock, Mail } from 'lucide-react'
+import { Hexagon, Lock, Mail, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ export default function Index() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 relative overflow-hidden py-10">
       <div className="absolute inset-0 opacity-20 bg-[url('https://img.usecurling.com/p/1920/1080?q=factory%20machine&color=blue')] bg-cover bg-center mix-blend-overlay" />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-transparent" />
 
@@ -68,9 +68,12 @@ export default function Index() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Senha</Label>
-                      <a href="#" className="text-xs text-blue-400 hover:text-blue-300">
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs text-blue-400 hover:text-blue-300"
+                      >
                         Esqueceu a senha?
-                      </a>
+                      </Link>
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
@@ -109,6 +112,13 @@ export default function Index() {
                   />
                   Google Workspace
                 </Button>
+
+                <div className="mt-6 text-center text-sm text-slate-400">
+                  Não tem uma conta?{' '}
+                  <Link to="/register" className="text-blue-400 hover:text-blue-300">
+                    Registre-se
+                  </Link>
+                </div>
               </TabsContent>
 
               <TabsContent value="ldap" className="mt-4">
