@@ -1,4 +1,5 @@
 import { Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,8 +18,10 @@ export function EquipmentTab() {
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex justify-between items-center">
         <Input placeholder="Filtrar equipamentos..." className="max-w-sm" />
-        <Button>
-          <Plus className="w-4 h-4 mr-2" /> Novo Equipamento
+        <Button asChild variant="outline">
+          <Link to="/products/new?category=equipamento">
+            <Plus className="w-4 h-4 mr-2" /> Novo Equipamento
+          </Link>
         </Button>
       </div>
       <div className="border rounded-md">

@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Hexagon,
+  Box,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -24,6 +25,7 @@ import {
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Inventário', url: '/inventory', icon: Package },
+  { title: 'Produtos', url: '/products/new', icon: Box },
   { title: 'Manutenção', url: '/maintenance', icon: Wrench },
   { title: 'Garantias', url: '/warranties', icon: ShieldCheck },
   { title: 'Histórico', url: '/history', icon: History },

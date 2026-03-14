@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
+import ProductNew from './pages/ProductNew'
 import Maintenance from './pages/Maintenance'
 import Warranties from './pages/Warranties'
 import History from './pages/History'
@@ -29,6 +30,7 @@ const App = () => (
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/products/new" element={<ProductNew />} />
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/warranties" element={<Warranties />} />
           <Route path="/history" element={<History />} />
