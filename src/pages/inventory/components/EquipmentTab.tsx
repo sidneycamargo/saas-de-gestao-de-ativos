@@ -10,11 +10,15 @@ import {
 } from '@/components/ui/table'
 import { StatusBadge } from '@/components/StatusBadge'
 import { equipment } from '@/lib/mock-data'
+import useCompanyStore from '@/stores/useCompanyStore'
 
 export function EquipmentTab() {
+  const { activeCompanyId } = useCompanyStore()
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredEquipment = equipment.filter((item) => {
+    if (item.companyId !== activeCompanyId) return false
+
     const search = searchTerm.toLowerCase()
     return (
       item.name.toLowerCase().includes(search) ||
@@ -66,7 +70,7 @@ export function EquipmentTab() {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
-                  Nenhum equipamento encontrado.
+                  Nenhum equipamento encontrado nesta unidade.
                 </TableCell>
               </TableRow>
             )}

@@ -10,11 +10,15 @@ import {
 } from '@/components/ui/table'
 import { Progress } from '@/components/ui/progress'
 import { parts } from '@/lib/mock-data'
+import useCompanyStore from '@/stores/useCompanyStore'
 
 export function PartsTab() {
+  const { activeCompanyId } = useCompanyStore()
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredParts = parts.filter((item) => {
+    if (item.companyId !== activeCompanyId) return false
+
     const search = searchTerm.toLowerCase()
     return item.name.toLowerCase().includes(search) || item.sku?.toLowerCase().includes(search)
   })
@@ -70,7 +74,7 @@ export function PartsTab() {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                  Nenhuma peça encontrada.
+                  Nenhuma peça encontrada nesta unidade.
                 </TableCell>
               </TableRow>
             )}

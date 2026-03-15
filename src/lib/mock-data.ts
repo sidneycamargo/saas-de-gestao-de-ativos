@@ -1,3 +1,61 @@
+export const companies = [
+  { id: 'c1', name: 'Matriz - São Paulo', logo: 'Hexagon' },
+  { id: 'c2', name: 'Filial - Rio de Janeiro', logo: 'Box' },
+]
+
+export const suppliers = [
+  {
+    id: 'sup1',
+    companyId: 'c1',
+    name: 'Manutenção Tech SA',
+    contactName: 'José Silva',
+    email: 'contato@mantech.com',
+    phone: '(11) 3333-4444',
+    whatsapp: '(11) 99999-8888',
+  },
+  {
+    id: 'sup2',
+    companyId: 'c1',
+    name: 'Peças & Cia',
+    contactName: 'Ana Souza',
+    email: 'vendas@pecasecia.com',
+    phone: '(11) 5555-6666',
+    whatsapp: '(11) 97777-6666',
+  },
+  {
+    id: 'sup3',
+    companyId: 'c2',
+    name: 'Serviços Rio',
+    contactName: 'Carlos Mendonça',
+    email: 'atend@servrio.com',
+    phone: '(21) 2222-3333',
+    whatsapp: '(21) 98888-7777',
+  },
+]
+
+export const contracts = [
+  {
+    id: 'con1',
+    companyId: 'c1',
+    supplierId: 'sup1',
+    registrationDate: '2025-01-10',
+    startDate: '2025-02-01',
+    endDate: '2026-02-01',
+    renewalWithin: true,
+    renewalAfter: false,
+  },
+  {
+    id: 'con2',
+    companyId: 'c1',
+    supplierId: 'sup2',
+    registrationDate: '2025-03-01',
+    startDate: '2025-03-15',
+    endDate: '2025-09-15',
+    renewalWithin: false,
+    renewalAfter: true,
+  },
+]
+
 export const kpis = {
   totalEquipment: 142,
   pendingMaintenance: 12,
@@ -8,6 +66,7 @@ export const kpis = {
 export const recentActivity = [
   {
     id: 1,
+    companyId: 'c1',
     user: 'João Silva',
     action: 'Atualizou estoque',
     target: 'Rolamento SKF 6204',
@@ -15,6 +74,7 @@ export const recentActivity = [
   },
   {
     id: 2,
+    companyId: 'c1',
     user: 'Maria Souza',
     action: 'Criou ordem de manutenção',
     target: 'Torno CNC #001',
@@ -22,6 +82,7 @@ export const recentActivity = [
   },
   {
     id: 3,
+    companyId: 'c2',
     user: 'Sistema',
     action: 'Alerta de garantia',
     target: 'Motor Elétrico M2',
@@ -29,6 +90,7 @@ export const recentActivity = [
   },
   {
     id: 4,
+    companyId: 'c1',
     user: 'Carlos Santos',
     action: 'Adicionou equipamento',
     target: 'Empilhadeira E-10',
@@ -37,11 +99,11 @@ export const recentActivity = [
 ]
 
 export const stockData = [
-  { name: 'Filtros', atual: 45, minimo: 20 },
-  { name: 'Correias', atual: 12, minimo: 15 },
-  { name: 'Rolamentos', atual: 8, minimo: 30 },
-  { name: 'Sensores', atual: 25, minimo: 10 },
-  { name: 'Óleo (L)', atual: 100, minimo: 50 },
+  { name: 'Filtros', atual: 45, minimo: 20, companyId: 'c1' },
+  { name: 'Correias', atual: 12, minimo: 15, companyId: 'c1' },
+  { name: 'Rolamentos', atual: 8, minimo: 30, companyId: 'c1' },
+  { name: 'Sensores', atual: 25, minimo: 10, companyId: 'c2' },
+  { name: 'Óleo (L)', atual: 100, minimo: 50, companyId: 'c2' },
 ]
 
 export const systemLocators = [
@@ -54,6 +116,7 @@ export const systemLocators = [
 export const equipment = [
   {
     id: 'EQ-001',
+    companyId: 'c1',
     name: 'Torno CNC Romi',
     sku: 'EQ-CNC-001',
     patrimony: 'PAT-10020',
@@ -65,6 +128,7 @@ export const equipment = [
   },
   {
     id: 'EQ-002',
+    companyId: 'c1',
     name: 'Esteira Transportadora A',
     sku: 'EQ-EST-002',
     patrimony: 'PAT-10021',
@@ -76,6 +140,7 @@ export const equipment = [
   },
   {
     id: 'EQ-003',
+    companyId: 'c2',
     name: 'Empilhadeira Yale',
     sku: 'EQ-EMP-003',
     patrimony: 'PAT-10022',
@@ -87,6 +152,7 @@ export const equipment = [
   },
   {
     id: 'EQ-004',
+    companyId: 'c1',
     name: 'Compressor de Ar Schulz',
     sku: 'EQ-CMP-004',
     patrimony: 'PAT-10023',
@@ -101,6 +167,7 @@ export const equipment = [
 export const parts = [
   {
     id: 'PT-100',
+    companyId: 'c1',
     name: 'Rolamento SKF 6204',
     sku: 'SKF-6204-2Z',
     patrimony: 'PAT-P-001',
@@ -111,6 +178,7 @@ export const parts = [
   },
   {
     id: 'PT-101',
+    companyId: 'c1',
     name: 'Correia em V A-35',
     sku: 'V-A35-GTS',
     patrimony: 'PAT-P-002',
@@ -121,6 +189,7 @@ export const parts = [
   },
   {
     id: 'PT-102',
+    companyId: 'c2',
     name: 'Filtro de Óleo Hidráulico',
     sku: 'FH-900',
     patrimony: 'PAT-P-003',
@@ -131,6 +200,7 @@ export const parts = [
   },
   {
     id: 'PT-103',
+    companyId: 'c1',
     name: 'Sensor Indutivo M12',
     sku: 'SI-M12-PNP',
     patrimony: 'PAT-P-004',
@@ -144,6 +214,7 @@ export const parts = [
 export const maintenances = [
   {
     id: 'OS-2023',
+    companyId: 'c1',
     equip: 'Esteira Transportadora A',
     type: 'Preventiva',
     date: '2026-03-20',
@@ -152,6 +223,7 @@ export const maintenances = [
   },
   {
     id: 'OS-2024',
+    companyId: 'c2',
     equip: 'Empilhadeira Yale',
     type: 'Corretiva',
     date: '2026-03-15',
@@ -160,6 +232,7 @@ export const maintenances = [
   },
   {
     id: 'OS-2021',
+    companyId: 'c1',
     equip: 'Torno CNC Romi',
     type: 'Preventiva',
     date: '2026-03-10',
@@ -171,6 +244,7 @@ export const maintenances = [
 export const auditLogs = [
   {
     id: 1,
+    companyId: 'c1',
     timestamp: '2026-03-13 14:30',
     user: 'admin@empresa.com',
     action: 'LOGIN',
@@ -178,6 +252,7 @@ export const auditLogs = [
   },
   {
     id: 2,
+    companyId: 'c1',
     timestamp: '2026-03-13 15:45',
     user: 'joao@empresa.com',
     action: 'UPDATE',
@@ -185,6 +260,7 @@ export const auditLogs = [
   },
   {
     id: 3,
+    companyId: 'c2',
     timestamp: '2026-03-13 16:10',
     user: 'carlos@empresa.com',
     action: 'CREATE',
@@ -192,6 +268,7 @@ export const auditLogs = [
   },
   {
     id: 4,
+    companyId: 'c1',
     timestamp: '2026-03-13 17:05',
     user: 'maria@empresa.com',
     action: 'DELETE',

@@ -1,24 +1,50 @@
 import { Package, Wrench, ShieldAlert, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { kpis, recentActivity, stockData } from '@/lib/mock-data'
+import { kpis, recentActivity, stockData, equipment, maintenances, parts } from '@/lib/mock-data'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, Cell } from 'recharts'
 import { useMemo } from 'react'
+import useCompanyStore from '@/stores/useCompanyStore'
 
 export default function Dashboard() {
+  const { activeCompanyId } = useCompanyStore()
+
+  const kpisStats = useMemo(() => {
+    const totalEq = equipment.filter((e) => e.companyId === activeCompanyId).length
+    const pMaint = maintenances.filter(
+      (m) =>
+        m.companyId === activeCompanyId && (m.status === 'Pendente' || m.status === 'Em Andamento'),
+    ).length
+    const lParts = parts.filter(
+      (p) => p.companyId === activeCompanyId && p.stock < p.minStock,
+    ).length
+
+    return {
+      totalEquipment: totalEq || kpis.totalEquipment,
+      pendingMaintenance: pMaint || kpis.pendingMaintenance,
+      lowStockParts: lParts || kpis.lowStockParts,
+      activeWarranties: kpis.activeWarranties,
+    }
+  }, [activeCompanyId])
+
+  const filteredActivity = useMemo(
+    () => recentActivity.filter((a) => a.companyId === activeCompanyId),
+    [activeCompanyId],
+  )
+
   const chartConfig = {
     atual: { label: 'Estoque Atual', color: 'hsl(var(--primary))' },
     minimo: { label: 'Estoque Mínimo', color: 'hsl(var(--danger))' },
   }
 
-  const processedStockData = useMemo(
-    () =>
-      stockData.map((item) => ({
+  const processedStockData = useMemo(() => {
+    return stockData
+      .filter((s) => s.companyId === activeCompanyId)
+      .map((item) => ({
         ...item,
         fill: item.atual < item.minimo ? 'hsl(var(--destructive))' : 'hsl(var(--success))',
-      })),
-    [],
-  )
+      }))
+  }, [activeCompanyId])
 
   return (
     <div className="space-y-6">
@@ -34,8 +60,8 @@ export default function Dashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.totalEquipment}</div>
-            <p className="text-xs text-muted-foreground">+4 adicionados este mês</p>
+            <div className="text-2xl font-bold">{kpisStats.totalEquipment}</div>
+            <p className="text-xs text-muted-foreground">Ativos registrados na unidade</p>
           </CardContent>
         </Card>
         <Card className="animate-slide-right" style={{ animationDelay: '100ms' }}>
@@ -44,8 +70,8 @@ export default function Dashboard() {
             <Wrench className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.pendingMaintenance}</div>
-            <p className="text-xs text-muted-foreground">3 para esta semana</p>
+            <div className="text-2xl font-bold">{kpisStats.pendingMaintenance}</div>
+            <p className="text-xs text-muted-foreground">Ordens e chamados em aberto</p>
           </CardContent>
         </Card>
         <Card className="animate-slide-right" style={{ animationDelay: '200ms' }}>
@@ -54,7 +80,7 @@ export default function Dashboard() {
             <Package className="h-4 w-4 text-danger" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.lowStockParts}</div>
+            <div className="text-2xl font-bold">{kpisStats.lowStockParts}</div>
             <p className="text-xs text-muted-foreground">Requer reposição urgente</p>
           </CardContent>
         </Card>
@@ -64,8 +90,8 @@ export default function Dashboard() {
             <ShieldAlert className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.activeWarranties}</div>
-            <p className="text-xs text-muted-foreground">2 expiram em 30 dias</p>
+            <div className="text-2xl font-bold">{kpisStats.activeWarranties}</div>
+            <p className="text-xs text-muted-foreground">Equipamentos cobertos</p>
           </CardContent>
         </Card>
       </div>
@@ -76,18 +102,24 @@ export default function Dashboard() {
             <CardTitle>Níveis de Estoque Críticos</CardTitle>
           </CardHeader>
           <CardContent className="pl-0">
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <BarChart data={processedStockData}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
-                <Bar dataKey="atual" radius={4}>
-                  {processedStockData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+            {processedStockData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <BarChart data={processedStockData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
+                  <Bar dataKey="atual" radius={4}>
+                    {processedStockData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                Sem dados de estoque críticos.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -97,20 +129,26 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.user}{' '}
-                      <span className="font-normal text-muted-foreground">{activity.action}</span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">{activity.target}</p>
+              {filteredActivity.length > 0 ? (
+                filteredActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {activity.user}{' '}
+                        <span className="font-normal text-muted-foreground">{activity.action}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">{activity.target}</p>
+                    </div>
+                    <div className="ml-auto font-medium text-xs text-muted-foreground">
+                      {activity.time}
+                    </div>
                   </div>
-                  <div className="ml-auto font-medium text-xs text-muted-foreground">
-                    {activity.time}
-                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma atividade recente registrada.
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
