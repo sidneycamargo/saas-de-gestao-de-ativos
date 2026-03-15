@@ -23,6 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -48,6 +49,13 @@ const items = [
 export function AppSidebar() {
   const location = useLocation()
   const { activeCompany, setActiveCompanyId } = useCompanyStore()
+  const { setOpenMobile, isMobile } = useSidebar()
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <Sidebar>
@@ -82,7 +90,7 @@ export function AppSidebar() {
                     isActive={location.pathname.startsWith(item.url)}
                     className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleLinkClick}>
                       <item.icon className="w-5 h-5" />
                       <span>{item.title}</span>
                     </Link>
@@ -100,7 +108,7 @@ export function AppSidebar() {
               asChild
               className="text-muted-foreground hover:text-primary-foreground"
             >
-              <Link to="/">
+              <Link to="/" onClick={handleLinkClick}>
                 <LogOut className="w-5 h-5" />
                 <span>Sair</span>
               </Link>
