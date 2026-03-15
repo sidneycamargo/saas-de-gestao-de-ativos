@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -19,8 +19,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -32,13 +43,16 @@ import { toast } from '@/hooks/use-toast'
 
 export function UsersTab({ users, setUsers, groups }: any) {
   const [isOpen, setIsOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     groupId: '',
     status: 'Ativo',
+    twoFactorEnabled: false,
   })
 
   const openDialog = (user?: any) => {
@@ -50,15 +64,26 @@ export function UsersTab({ users, setUsers, groups }: any) {
       setFormData({
         name: '',
         email: '',
+        phone: '',
         password: '',
         groupId: groups[0]?.id || '',
         status: 'Ativo',
+        twoFactorEnabled: false,
       })
     }
     setIsOpen(true)
   }
 
   const handleSave = () => {
+    if (formData.twoFactorEnabled && !formData.phone) {
+      toast({
+        title: 'Aviso de Segurança',
+        description: 'É obrigatório informar um celular para habilitar o 2FA.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (editingId) {
       setUsers(users.map((u: any) => (u.id === editingId ? { ...u, ...formData } : u)))
       toast({ title: 'Usuário atualizado', description: 'Os dados foram salvos com sucesso.' })
@@ -69,9 +94,16 @@ export function UsersTab({ users, setUsers, groups }: any) {
     setIsOpen(false)
   }
 
-  const handleDelete = (id: string) => {
-    setUsers(users.filter((u: any) => u.id !== id))
-    toast({ title: 'Usuário removido', variant: 'destructive' })
+  const confirmDelete = (id: string) => {
+    setUserToDelete(id)
+  }
+
+  const handleDelete = () => {
+    if (userToDelete) {
+      setUsers(users.filter((u: any) => u.id !== userToDelete))
+      toast({ title: 'Usuário removido', variant: 'destructive' })
+      setUserToDelete(null)
+    }
   }
 
   const getGroup = (id: string) => groups.find((g: any) => g.id === id)?.name || 'Desconhecido'
@@ -93,7 +125,9 @@ export function UsersTab({ users, setUsers, groups }: any) {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Celular</TableHead>
               <TableHead>Grupo</TableHead>
+              <TableHead>2FA</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -103,8 +137,16 @@ export function UsersTab({ users, setUsers, groups }: any) {
               <TableRow key={u.id}>
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell>{u.email}</TableCell>
+                <TableCell>{u.phone || '-'}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{getGroup(u.groupId)}</Badge>
+                </TableCell>
+                <TableCell>
+                  {u.twoFactorEnabled ? (
+                    <ShieldCheck className="w-4 h-4 text-success" />
+                  ) : (
+                    <ShieldAlert className="w-4 h-4 text-muted-foreground" />
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -124,7 +166,7 @@ export function UsersTab({ users, setUsers, groups }: any) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(u.id)}
+                    onClick={() => confirmDelete(u.id)}
                     className="text-danger"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -137,34 +179,48 @@ export function UsersTab({ users, setUsers, groups }: any) {
       </CardContent>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
             <DialogDescription>Preencha os dados de acesso do usuário abaixo.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome Completo</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Senha {editingId && '(deixe em branco para manter)'}</Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>
+                  Celular {formData.twoFactorEnabled && <span className="text-danger ml-1">*</span>}
+                </Label>
+                <Input
+                  placeholder="+55 11 99999-9999"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Senha {editingId && '(em branco p/ manter)'}</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -201,6 +257,19 @@ export function UsersTab({ users, setUsers, groups }: any) {
                 </Select>
               </div>
             </div>
+            <div className="flex items-center space-x-2 pt-2 border-t mt-2">
+              <Switch
+                id="2fa"
+                checked={formData.twoFactorEnabled}
+                onCheckedChange={(c) => setFormData({ ...formData, twoFactorEnabled: c })}
+              />
+              <Label htmlFor="2fa" className="flex flex-col">
+                <span>Exigir Autenticação de Dois Fatores (2FA)</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Será enviado um código SMS para o celular cadastrado durante o login.
+                </span>
+              </Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>
@@ -210,6 +279,27 @@ export function UsersTab({ users, setUsers, groups }: any) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!userToDelete} onOpenChange={(o) => !o && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não poderá ser desfeita. O usuário selecionado perderá o acesso
+              imediatamente. O histórico de auditoria será mantido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-danger text-white hover:bg-danger/90"
+              onClick={handleDelete}
+            >
+              Remover Usuário
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

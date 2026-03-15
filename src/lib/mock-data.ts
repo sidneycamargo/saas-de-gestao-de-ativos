@@ -212,12 +212,30 @@ export const systemGroups = [
 ]
 
 export const systemUsers = [
-  { id: 'u1', name: 'Admin Geral', email: 'admin@assetpro.com', groupId: 'g1', status: 'Ativo' },
-  { id: 'u2', name: 'João Técnico', email: 'joao@assetpro.com', groupId: 'g2', status: 'Ativo' },
+  {
+    id: 'u1',
+    name: 'Admin Geral',
+    email: 'admin@assetpro.com',
+    phone: '+55 11 99999-9999',
+    twoFactorEnabled: true,
+    groupId: 'g1',
+    status: 'Ativo',
+  },
+  {
+    id: 'u2',
+    name: 'João Técnico',
+    email: 'joao@assetpro.com',
+    phone: '+55 11 98888-8888',
+    twoFactorEnabled: false,
+    groupId: 'g2',
+    status: 'Ativo',
+  },
   {
     id: 'u3',
     name: 'Maria Gestora',
     email: 'maria@assetpro.com',
+    phone: '',
+    twoFactorEnabled: false,
     groupId: 'g3',
     status: 'Inativo',
   },
