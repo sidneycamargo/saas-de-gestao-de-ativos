@@ -16,18 +16,14 @@ export function PartsTab() {
 
   const filteredParts = parts.filter((item) => {
     const search = searchTerm.toLowerCase()
-    return (
-      item.name.toLowerCase().includes(search) ||
-      item.sku?.toLowerCase().includes(search) ||
-      item.patrimony?.toLowerCase().includes(search)
-    )
+    return item.name.toLowerCase().includes(search) || item.sku?.toLowerCase().includes(search)
   })
 
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
-          placeholder="Buscar por nome, SKU ou patrimônio..."
+          placeholder="Buscar por nome ou SKU..."
           className="w-full sm:max-w-md"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -40,7 +36,6 @@ export function PartsTab() {
               <TableHead>Identificador</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Patrimônio</TableHead>
               <TableHead>Preço Unit.</TableHead>
               <TableHead className="w-[200px]">Estoque</TableHead>
             </TableRow>
@@ -55,7 +50,6 @@ export function PartsTab() {
                     <TableCell className="font-medium">{item.id}</TableCell>
                     <TableCell>{item.name}</TableCell>
                     <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.patrimony || '-'}</TableCell>
                     <TableCell>R$ {item.price.toFixed(2)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -75,7 +69,7 @@ export function PartsTab() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                   Nenhuma peça encontrada.
                 </TableCell>
               </TableRow>

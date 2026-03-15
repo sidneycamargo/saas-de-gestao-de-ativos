@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ export default function ProductNew() {
   const [searchParams] = useSearchParams()
 
   const defaultCategory = searchParams.get('category') === 'equipamento' ? 'equipamento' : 'peca'
+  const [category, setCategory] = useState(defaultCategory)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,17 +68,12 @@ export default function ProductNew() {
 
               <div className="space-y-2">
                 <Label htmlFor="sku">SKU / Código</Label>
-                <Input id="sku" placeholder="Ex: PT-100-XYZ" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="patrimony">Patrimônio (Asset Tag)</Label>
-                <Input id="patrimony" placeholder="Ex: PAT-99123" />
+                <Input id="sku" required placeholder="Ex: PT-100-XYZ" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select required defaultValue={defaultCategory}>
+                <Select required value={category} onValueChange={setCategory}>
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
@@ -86,6 +83,13 @@ export default function ProductNew() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {category === 'equipamento' && (
+                <div className="space-y-2 animate-in fade-in zoom-in duration-200">
+                  <Label htmlFor="patrimony">Patrimônio (Asset Tag)</Label>
+                  <Input id="patrimony" placeholder="Ex: PAT-99123" />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="locator">Localizador Físico</Label>
