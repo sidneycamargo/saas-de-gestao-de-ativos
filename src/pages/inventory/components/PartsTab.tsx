@@ -1,7 +1,4 @@
-import { Plus } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -28,18 +25,13 @@ export function PartsTab() {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
           placeholder="Buscar por nome, SKU ou patrimônio..."
           className="w-full sm:max-w-md"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Button asChild variant="outline" className="w-full sm:w-auto">
-          <Link to="/products/new?category=peca">
-            <Plus className="w-4 h-4 mr-2" /> Nova Peça
-          </Link>
-        </Button>
       </div>
       <div className="border rounded-md">
         <Table>
