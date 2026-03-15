@@ -171,3 +171,54 @@ export const auditLogs = [
     entity: 'Equipamento EQ-999',
   },
 ]
+
+export const systemGroups = [
+  {
+    id: 'g1',
+    name: 'Administrador',
+    description: 'Acesso total ao sistema',
+    permissions: {
+      dashboard: { view: true, create: true, delete: true },
+      inventory: { view: true, create: true, delete: true },
+      maintenance: { view: true, create: true, delete: true },
+      warranties: { view: true, create: true, delete: true },
+      users: { view: true, create: true, delete: true },
+    },
+  },
+  {
+    id: 'g2',
+    name: 'Técnico',
+    description: 'Acesso a manutenções e inventário',
+    permissions: {
+      dashboard: { view: true, create: false, delete: false },
+      inventory: { view: true, create: true, delete: false },
+      maintenance: { view: true, create: true, delete: false },
+      warranties: { view: true, create: false, delete: false },
+      users: { view: false, create: false, delete: false },
+    },
+  },
+  {
+    id: 'g3',
+    name: 'Visualizador',
+    description: 'Apenas leitura de dados',
+    permissions: {
+      dashboard: { view: true, create: false, delete: false },
+      inventory: { view: true, create: false, delete: false },
+      maintenance: { view: true, create: false, delete: false },
+      warranties: { view: true, create: false, delete: false },
+      users: { view: false, create: false, delete: false },
+    },
+  },
+]
+
+export const systemUsers = [
+  { id: 'u1', name: 'Admin Geral', email: 'admin@assetpro.com', groupId: 'g1', status: 'Ativo' },
+  { id: 'u2', name: 'João Técnico', email: 'joao@assetpro.com', groupId: 'g2', status: 'Ativo' },
+  {
+    id: 'u3',
+    name: 'Maria Gestora',
+    email: 'maria@assetpro.com',
+    groupId: 'g3',
+    status: 'Inativo',
+  },
+]

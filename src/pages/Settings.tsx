@@ -1,23 +1,14 @@
+import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LdapTab } from './settings/components/LdapTab'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-
-const users = [
-  { name: 'Admin Geral', email: 'admin@assetpro.com', role: 'Administrador', status: 'Ativo' },
-  { name: 'João Técnico', email: 'joao@assetpro.com', role: 'Técnico', status: 'Ativo' },
-  { name: 'Maria Gestora', email: 'maria@assetpro.com', role: 'Gerente', status: 'Inativo' },
-]
+import { UsersTab } from './settings/components/UsersTab'
+import { GroupsTab } from './settings/components/GroupsTab'
+import { systemUsers, systemGroups } from '@/lib/mock-data'
 
 export default function Settings() {
+  const [users, setUsers] = useState(systemUsers)
+  const [groups, setGroups] = useState(systemGroups)
+
   return (
     <div className="space-y-6">
       <div>
@@ -28,52 +19,17 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-[400px] grid-cols-2">
+        <TabsList className="grid w-full md:w-[600px] grid-cols-3">
           <TabsTrigger value="users">Usuários</TabsTrigger>
+          <TabsTrigger value="groups">Grupos de Acesso</TabsTrigger>
           <TabsTrigger value="ldap">SSO / LDAP</TabsTrigger>
         </TabsList>
         <div className="mt-4">
           <TabsContent value="users">
-            <Card className="animate-fade-in-up">
-              <CardHeader>
-                <CardTitle>Gerenciamento de Usuários</CardTitle>
-                <CardDescription>Controle de acesso e papéis.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Papel</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow key={u.email}>
-                        <TableCell className="font-medium">{u.name}</TableCell>
-                        <TableCell>{u.email}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{u.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              u.status === 'Ativo'
-                                ? 'bg-success hover:bg-success/80'
-                                : 'bg-danger hover:bg-danger/80'
-                            }
-                          >
-                            {u.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <UsersTab users={users} setUsers={setUsers} groups={groups} />
+          </TabsContent>
+          <TabsContent value="groups">
+            <GroupsTab groups={groups} setGroups={setGroups} />
           </TabsContent>
           <TabsContent value="ldap">
             <LdapTab />
