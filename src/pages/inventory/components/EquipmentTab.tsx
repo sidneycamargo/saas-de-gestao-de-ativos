@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { StatusBadge } from '@/components/StatusBadge'
-import { equipment } from '@/lib/mock-data'
+import { equipment, systemLocators } from '@/lib/mock-data'
 import useCompanyStore from '@/stores/useCompanyStore'
 
 export function EquipmentTab() {
@@ -22,18 +22,20 @@ export function EquipmentTab() {
     const search = searchTerm.toLowerCase()
     return (
       item.name.toLowerCase().includes(search) ||
-      item.sku?.toLowerCase().includes(search) ||
       item.patrimony?.toLowerCase().includes(search) ||
-      item.serial.toLowerCase().includes(search) ||
-      item.category.toLowerCase().includes(search)
+      item.id.toLowerCase().includes(search)
     )
   })
+
+  const getLocationName = (locatorId: string) => {
+    return systemLocators.find((loc) => loc.id === locatorId)?.name || 'Não atribuído'
+  }
 
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
-          placeholder="Buscar por nome, SKU, patrimônio, série..."
+          placeholder="Buscar por nome, patrimônio ou ID..."
           className="w-full sm:max-w-md"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -43,12 +45,9 @@ export function EquipmentTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Identificador</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>SKU</TableHead>
               <TableHead>Patrimônio</TableHead>
-              <TableHead>Número de Série</TableHead>
-              <TableHead>Categoria</TableHead>
+              <TableHead>Localização</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -56,12 +55,12 @@ export function EquipmentTab() {
             {filteredEquipment.length > 0 ? (
               filteredEquipment.map((item) => (
                 <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{item.id}</TableCell>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.patrimony || '-'}</TableCell>
-                  <TableCell>{item.serial}</TableCell>
-                  <TableCell>{item.category}</TableCell>
+                  <TableCell className="font-medium">
+                    {item.name}
+                    <div className="text-xs text-muted-foreground font-normal">{item.id}</div>
+                  </TableCell>
+                  <TableCell>{item.patrimony || '-'}</TableCell>
+                  <TableCell>{getLocationName(item.locatorId)}</TableCell>
                   <TableCell>
                     <StatusBadge status={item.status} />
                   </TableCell>
@@ -69,7 +68,7 @@ export function EquipmentTab() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
                   Nenhum equipamento encontrado nesta unidade.
                 </TableCell>
               </TableRow>

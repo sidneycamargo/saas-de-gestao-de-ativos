@@ -33,8 +33,8 @@ export default function ProductNew() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     toast({
-      title: 'Produto Cadastrado',
-      description: 'O produto foi salvo com sucesso no inventário.',
+      title: 'Item Cadastrado',
+      description: 'O item foi salvo com sucesso no inventário.',
     })
     navigate('/inventory')
   }
@@ -46,7 +46,7 @@ export default function ProductNew() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Novo Produto</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Novo Item</h2>
           <p className="text-muted-foreground">Cadastre uma nova peça ou equipamento no sistema.</p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function ProductNew() {
       <form onSubmit={handleSubmit}>
         <Card className="animate-fade-in-up">
           <CardHeader>
-            <CardTitle>Informações do Produto</CardTitle>
+            <CardTitle>Informações do Item</CardTitle>
             <CardDescription>
               Preencha os detalhes essenciais para controle e gerenciamento.
             </CardDescription>
@@ -62,7 +62,7 @@ export default function ProductNew() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="name">Nome do Produto</Label>
+                <Label htmlFor="name">Nome do Item</Label>
                 <Input id="name" required placeholder="Ex: Motor Elétrico Trifásico" />
               </div>
 
@@ -86,13 +86,13 @@ export default function ProductNew() {
 
               {category === 'equipamento' && (
                 <div className="space-y-2 animate-in fade-in zoom-in duration-200">
-                  <Label htmlFor="patrimony">Patrimônio (Asset Tag)</Label>
-                  <Input id="patrimony" placeholder="Ex: PAT-99123" />
+                  <Label htmlFor="patrimony">Número de Patrimônio</Label>
+                  <Input id="patrimony" required placeholder="Ex: PAT-99123" />
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="locator">Localizador Físico</Label>
+                <Label htmlFor="locator">Localização Física</Label>
                 <Select defaultValue="unassigned">
                   <SelectTrigger id="locator">
                     <SelectValue placeholder="Selecione um local" />
@@ -148,7 +148,7 @@ export default function ProductNew() {
               Cancelar
             </Button>
             <Button type="submit">
-              <Save className="w-4 h-4 mr-2" /> Salvar Produto
+              <Save className="w-4 h-4 mr-2" /> Salvar Item
             </Button>
           </CardFooter>
         </Card>

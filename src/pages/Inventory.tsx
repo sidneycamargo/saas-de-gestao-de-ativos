@@ -17,7 +17,7 @@ export default function Inventory() {
         </div>
         <Button asChild className="w-full sm:w-auto">
           <Link to="/products/new">
-            <Plus className="w-4 h-4 mr-2" /> Cadastrar Produto
+            <Plus className="w-4 h-4 mr-2" /> Novo Item
           </Link>
         </Button>
       </div>
@@ -25,16 +25,14 @@ export default function Inventory() {
       <Tabs defaultValue="equipment" className="w-full">
         <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
           <TabsTrigger value="equipment">Equipamentos</TabsTrigger>
-          <TabsTrigger value="parts">Peças & Consumíveis</TabsTrigger>
+          <TabsTrigger value="parts">Peças</TabsTrigger>
         </TabsList>
         <div className="mt-4">
           <TabsContent value="equipment">
             <EquipmentTab />
           </TabsContent>
           <TabsContent value="parts">
-            <TabsContent value="parts" className="m-0">
-              <PartsTab />
-            </TabsContent>
+            <PartsTab />
           </TabsContent>
         </div>
       </Tabs>
