@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
+import { systemLocators } from '@/lib/mock-data'
 
 export default function ProductNew() {
   const navigate = useNavigate()
@@ -37,7 +38,7 @@ export default function ProductNew() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
           <ArrowLeft className="h-4 w-4" />
@@ -64,6 +65,16 @@ export default function ProductNew() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="sku">SKU / Código</Label>
+                <Input id="sku" placeholder="Ex: PT-100-XYZ" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="patrimony">Patrimônio (Asset Tag)</Label>
+                <Input id="patrimony" placeholder="Ex: PAT-99123" />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
                 <Select required defaultValue={defaultCategory}>
                   <SelectTrigger id="category">
@@ -72,6 +83,23 @@ export default function ProductNew() {
                   <SelectContent>
                     <SelectItem value="peca">Peça</SelectItem>
                     <SelectItem value="equipamento">Equipamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="locator">Localizador Físico</Label>
+                <Select defaultValue="unassigned">
+                  <SelectTrigger id="locator">
+                    <SelectValue placeholder="Selecione um local" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Não atribuído</SelectItem>
+                    {systemLocators.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

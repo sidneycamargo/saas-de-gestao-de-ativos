@@ -44,10 +44,20 @@ export const stockData = [
   { name: 'Óleo (L)', atual: 100, minimo: 50 },
 ]
 
+export const systemLocators = [
+  { id: 'l1', name: 'Prateleira A1', description: 'Corredor 1, Nível Baixo' },
+  { id: 'l2', name: 'Armário B', description: 'Ferramentas e Peças Pequenas' },
+  { id: 'l3', name: 'Pátio Externo', description: 'Área de maquinário pesado' },
+  { id: 'l4', name: 'Almoxarifado Central', description: 'Estoque principal' },
+]
+
 export const equipment = [
   {
     id: 'EQ-001',
     name: 'Torno CNC Romi',
+    sku: 'EQ-CNC-001',
+    patrimony: 'PAT-10020',
+    locatorId: 'l3',
     serial: 'SN-998273',
     category: 'Usinagem',
     status: 'Operacional',
@@ -56,6 +66,9 @@ export const equipment = [
   {
     id: 'EQ-002',
     name: 'Esteira Transportadora A',
+    sku: 'EQ-EST-002',
+    patrimony: 'PAT-10021',
+    locatorId: 'l4',
     serial: 'SN-112344',
     category: 'Logística',
     status: 'Em Manutenção',
@@ -64,6 +77,9 @@ export const equipment = [
   {
     id: 'EQ-003',
     name: 'Empilhadeira Yale',
+    sku: 'EQ-EMP-003',
+    patrimony: 'PAT-10022',
+    locatorId: 'l3',
     serial: 'SN-554433',
     category: 'Veículos',
     status: 'Inativo',
@@ -72,6 +88,9 @@ export const equipment = [
   {
     id: 'EQ-004',
     name: 'Compressor de Ar Schulz',
+    sku: 'EQ-CMP-004',
+    patrimony: 'PAT-10023',
+    locatorId: 'l4',
     serial: 'SN-999888',
     category: 'Pneumática',
     status: 'Operacional',
@@ -84,6 +103,8 @@ export const parts = [
     id: 'PT-100',
     name: 'Rolamento SKF 6204',
     sku: 'SKF-6204-2Z',
+    patrimony: 'PAT-P-001',
+    locatorId: 'l2',
     stock: 8,
     minStock: 20,
     price: 45.9,
@@ -92,6 +113,8 @@ export const parts = [
     id: 'PT-101',
     name: 'Correia em V A-35',
     sku: 'V-A35-GTS',
+    patrimony: 'PAT-P-002',
+    locatorId: 'l1',
     stock: 15,
     minStock: 10,
     price: 22.5,
@@ -100,6 +123,8 @@ export const parts = [
     id: 'PT-102',
     name: 'Filtro de Óleo Hidráulico',
     sku: 'FH-900',
+    patrimony: 'PAT-P-003',
+    locatorId: 'l2',
     stock: 4,
     minStock: 15,
     price: 120.0,
@@ -108,6 +133,8 @@ export const parts = [
     id: 'PT-103',
     name: 'Sensor Indutivo M12',
     sku: 'SI-M12-PNP',
+    patrimony: 'PAT-P-004',
+    locatorId: 'l2',
     stock: 25,
     minStock: 5,
     price: 85.0,

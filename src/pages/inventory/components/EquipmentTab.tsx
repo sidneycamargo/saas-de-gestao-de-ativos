@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,10 +15,28 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { equipment } from '@/lib/mock-data'
 
 export function EquipmentTab() {
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const filteredEquipment = equipment.filter((item) => {
+    const search = searchTerm.toLowerCase()
+    return (
+      item.name.toLowerCase().includes(search) ||
+      item.sku?.toLowerCase().includes(search) ||
+      item.patrimony?.toLowerCase().includes(search) ||
+      item.serial.toLowerCase().includes(search) ||
+      item.category.toLowerCase().includes(search)
+    )
+  })
+
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <Input placeholder="Filtrar equipamentos..." className="w-full sm:max-w-sm" />
+        <Input
+          placeholder="Buscar por nome, SKU, patrimônio, série..."
+          className="w-full sm:max-w-md"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link to="/products/new?category=equipamento">
             <Plus className="w-4 h-4 mr-2" /> Novo Equipamento
@@ -30,25 +49,35 @@ export function EquipmentTab() {
             <TableRow>
               <TableHead>Identificador</TableHead>
               <TableHead>Nome</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Patrimônio</TableHead>
               <TableHead>Número de Série</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Garantia</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {equipment.map((item) => (
-              <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50">
-                <TableCell className="font-medium">{item.id}</TableCell>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>{item.serial}</TableCell>
-                <TableCell>{item.category}</TableCell>
-                <TableCell>{item.warranty}</TableCell>
-                <TableCell>
-                  <StatusBadge status={item.status} />
+            {filteredEquipment.length > 0 ? (
+              filteredEquipment.map((item) => (
+                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableCell className="font-medium">{item.id}</TableCell>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.patrimony || '-'}</TableCell>
+                  <TableCell>{item.serial}</TableCell>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={item.status} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                  Nenhum equipamento encontrado.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
