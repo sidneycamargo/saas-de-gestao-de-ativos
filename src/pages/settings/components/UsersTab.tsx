@@ -110,12 +110,12 @@ export function UsersTab({ users, setUsers, groups }: any) {
 
   return (
     <Card className="animate-fade-in-up">
-      <CardHeader className="flex flex-row items-center justify-between pb-4 space-y-0">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4 space-y-0">
         <div className="space-y-1">
           <CardTitle>Gerenciamento de Usuários</CardTitle>
           <CardDescription>Controle de acesso e papéis do sistema.</CardDescription>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={() => openDialog()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" /> Novo Usuário
         </Button>
       </CardHeader>
@@ -185,7 +185,7 @@ export function UsersTab({ users, setUsers, groups }: any) {
             <DialogDescription>Preencha os dados de acesso do usuário abaixo.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nome Completo</Label>
                 <Input
@@ -202,7 +202,7 @@ export function UsersTab({ users, setUsers, groups }: any) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Celular {formData.twoFactorEnabled && <span className="text-danger ml-1">*</span>}
@@ -222,7 +222,7 @@ export function UsersTab({ users, setUsers, groups }: any) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Grupo de Acesso</Label>
                 <Select

@@ -16,9 +16,9 @@ import { equipment } from '@/lib/mock-data'
 export function EquipmentTab() {
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex justify-between items-center">
-        <Input placeholder="Filtrar equipamentos..." className="max-w-sm" />
-        <Button asChild variant="outline">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Input placeholder="Filtrar equipamentos..." className="w-full sm:max-w-sm" />
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link to="/products/new?category=equipamento">
             <Plus className="w-4 h-4 mr-2" /> Novo Equipamento
           </Link>

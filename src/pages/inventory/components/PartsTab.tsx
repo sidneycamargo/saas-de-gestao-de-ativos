@@ -16,9 +16,9 @@ import { parts } from '@/lib/mock-data'
 export function PartsTab() {
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex justify-between items-center">
-        <Input placeholder="Filtrar peças..." className="max-w-sm" />
-        <Button asChild variant="outline">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Input placeholder="Filtrar peças..." className="w-full sm:max-w-sm" />
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link to="/products/new?category=peca">
             <Plus className="w-4 h-4 mr-2" /> Nova Peça
           </Link>

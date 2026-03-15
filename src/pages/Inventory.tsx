@@ -8,14 +8,14 @@ import { PartsTab } from './inventory/components/PartsTab'
 export default function Inventory() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Inventário</h2>
           <p className="text-muted-foreground">
             Gestão de equipamentos e controle de estoque de peças.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link to="/products/new">
             <Plus className="w-4 h-4 mr-2" /> Cadastrar Produto
           </Link>
@@ -23,7 +23,7 @@ export default function Inventory() {
       </div>
 
       <Tabs defaultValue="equipment" className="w-full">
-        <TabsList className="grid w-[400px] grid-cols-2">
+        <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
           <TabsTrigger value="equipment">Equipamentos</TabsTrigger>
           <TabsTrigger value="parts">Peças & Consumíveis</TabsTrigger>
         </TabsList>

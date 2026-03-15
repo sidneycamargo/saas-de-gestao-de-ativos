@@ -41,14 +41,14 @@ export default function Maintenance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Manutenção</h2>
           <p className="text-muted-foreground">Agendamento e histórico de ordens de serviço.</p>
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" /> Nova OS
             </Button>
           </DialogTrigger>
