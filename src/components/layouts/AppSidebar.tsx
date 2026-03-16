@@ -12,6 +12,7 @@ import {
   ChevronDown,
   FileText,
   Truck,
+  Shield,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -32,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import useCompanyStore from '@/stores/useCompanyStore'
-import { companies } from '@/lib/mock-data'
+import { useAuth } from '@/hooks/use-auth'
 
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -48,7 +49,8 @@ const items = [
 
 export function AppSidebar() {
   const location = useLocation()
-  const { activeCompany, setActiveCompanyId } = useCompanyStore()
+  const { profile, signOut } = useAuth()
+  const { activeCompany, companies, setActiveCompanyId } = useCompanyStore()
   const { setOpenMobile, isMobile } = useSidebar()
 
   const handleLinkClick = () => {
@@ -65,7 +67,9 @@ export function AppSidebar() {
             <div className="flex items-center justify-between w-full p-2 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors">
               <div className="flex items-center gap-2 font-bold text-sm text-primary-foreground">
                 <Building2 className="w-5 h-5 text-accent" />
-                <span className="truncate max-w-[150px]">{activeCompany?.name}</span>
+                <span className="truncate max-w-[150px]">
+                  {activeCompany?.name || 'Selecione uma empresa'}
+                </span>
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
@@ -76,6 +80,9 @@ export function AppSidebar() {
                 {c.name}
               </DropdownMenuItem>
             ))}
+            {companies.length === 0 && (
+              <DropdownMenuItem disabled>Nenhuma empresa</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>
@@ -97,6 +104,21 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {profile?.is_super_admin && (
+                <SidebarMenuItem className="mt-4 border-t border-sidebar-border pt-4">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname.startsWith('/system-admin')}
+                    className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                  >
+                    <Link to="/system-admin" onClick={handleLinkClick}>
+                      <Shield className="w-5 h-5 text-amber-500" />
+                      <span className="font-semibold text-amber-500">Super Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -106,12 +128,16 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="text-muted-foreground hover:text-primary-foreground"
+              className="text-muted-foreground hover:text-primary-foreground cursor-pointer"
+              onClick={() => {
+                handleLinkClick()
+                signOut()
+              }}
             >
-              <Link to="/" onClick={handleLinkClick}>
+              <div>
                 <LogOut className="w-5 h-5" />
                 <span>Sair</span>
-              </Link>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

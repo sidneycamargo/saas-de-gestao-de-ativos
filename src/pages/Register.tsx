@@ -1,28 +1,40 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Hexagon, Lock, Mail, User, Shield } from 'lucide-react'
+import { Hexagon, Lock, Mail, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Register() {
   const navigate = useNavigate()
+  const { signUp } = useAuth()
 
-  const handleRegister = (e: React.FormEvent) => {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast({
-      title: 'Conta criada com sucesso',
-      description: 'Você já pode fazer login no sistema.',
-    })
-    navigate('/')
+    setLoading(true)
+    const { error } = await signUp(email, password, name)
+    setLoading(false)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Conta criada com sucesso',
+        description: 'Você já pode fazer login no sistema.',
+      })
+      navigate('/')
+    }
   }
 
   return (
@@ -52,6 +64,8 @@ export default function Register() {
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                   <Input
                     id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     placeholder="João da Silva"
                     required
                     className="pl-9 bg-slate-900 border-slate-700 text-white"
@@ -66,28 +80,13 @@ export default function Register() {
                   <Input
                     id="email"
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="nome@empresa.com"
                     required
                     className="pl-9 bg-slate-900 border-slate-700 text-white"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Perfil de Acesso</Label>
-                <Select required defaultValue="viewer">
-                  <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-slate-500" />
-                      <SelectValue placeholder="Selecione um perfil" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="technician">Técnico</SelectItem>
-                    <SelectItem value="viewer">Visualizador</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2">
@@ -97,26 +96,20 @@ export default function Register() {
                   <Input
                     id="password"
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                     className="pl-9 bg-slate-900 border-slate-700 text-white"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirmar Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    required
-                    className="pl-9 bg-slate-900 border-slate-700 text-white"
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Registrar
               </Button>
             </form>

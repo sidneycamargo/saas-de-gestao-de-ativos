@@ -1,4 +1,4 @@
-import { Bell, Search, User } from 'lucide-react'
+import { Bell, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import {
@@ -11,8 +11,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/use-auth'
 
 export function AppHeader() {
+  const { profile, signOut } = useAuth()
+
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b bg-card">
       <div className="flex items-center gap-4 flex-1">
@@ -41,20 +44,22 @@ export function AppHeader() {
                   src="https://img.usecurling.com/ppl/thumbnail?gender=male&seed=42"
                   alt="Avatar"
                 />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarFallback>{profile?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Administrador</p>
-                <p className="text-xs leading-none text-muted-foreground">admin@assetpro.com</p>
+                <p className="text-sm font-medium leading-none">{profile?.name || 'Usuário'}</p>
+                <p className="text-xs leading-none text-muted-foreground">{profile?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Configurações</DropdownMenuItem>
-            <DropdownMenuItem className="text-danger focus:text-danger">Sair</DropdownMenuItem>
+            <DropdownMenuItem className="text-danger focus:text-danger" onClick={signOut}>
+              Sair
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

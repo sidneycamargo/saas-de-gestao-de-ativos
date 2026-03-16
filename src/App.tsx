@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from './components/Layout'
 import DashboardLayout from './components/layouts/DashboardLayout'
+import { AuthProvider } from './hooks/use-auth'
 import { CompanyProvider } from './stores/useCompanyStore'
 
 import Index from './pages/Index'
@@ -19,35 +20,39 @@ import Contracts from './pages/Contracts'
 import Warranties from './pages/Warranties'
 import History from './pages/History'
 import Settings from './pages/Settings'
+import SystemAdmin from './pages/SystemAdmin'
 
 const App = () => (
-  <CompanyProvider>
-    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-          </Route>
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/products/new" element={<ProductNew />} />
-            <Route path="/maintenance" element={<Maintenance />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/contracts" element={<Contracts />} />
-            <Route path="/warranties" element={<Warranties />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </BrowserRouter>
-  </CompanyProvider>
+  <AuthProvider>
+    <CompanyProvider>
+      <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+            </Route>
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/products/new" element={<ProductNew />} />
+              <Route path="/maintenance" element={<Maintenance />} />
+              <Route path="/suppliers" element={<Suppliers />} />
+              <Route path="/contracts" element={<Contracts />} />
+              <Route path="/warranties" element={<Warranties />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/system-admin" element={<SystemAdmin />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </BrowserRouter>
+    </CompanyProvider>
+  </AuthProvider>
 )
 
 export default App
