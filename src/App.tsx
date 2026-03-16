@@ -20,7 +20,10 @@ import Contracts from './pages/Contracts'
 import Warranties from './pages/Warranties'
 import History from './pages/History'
 import Settings from './pages/Settings'
-import SystemAdmin from './pages/SystemAdmin'
+
+import AdminCompanies from './pages/admin/Companies'
+import AdminSubscriptions from './pages/admin/Subscriptions'
+import AdminUsers from './pages/admin/Users'
 
 const App = () => (
   <AuthProvider>
@@ -45,7 +48,10 @@ const App = () => (
               <Route path="/warranties" element={<Warranties />} />
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/system-admin" element={<SystemAdmin />} />
+
+              <Route path="/admin/companies" element={<AdminCompanies />} />
+              <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

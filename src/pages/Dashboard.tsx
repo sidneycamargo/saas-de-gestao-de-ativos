@@ -1,13 +1,16 @@
-import { Package, Wrench, ShieldAlert, Activity } from 'lucide-react'
+import { Package, Wrench, ShieldAlert, Activity, Building, CreditCard, Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { kpis, recentActivity, stockData, equipment, maintenances, parts } from '@/lib/mock-data'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, Cell } from 'recharts'
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import useCompanyStore from '@/stores/useCompanyStore'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Dashboard() {
   const { activeCompanyId } = useCompanyStore()
+  const { profile } = useAuth()
 
   const kpisStats = useMemo(() => {
     const totalEq = equipment.filter((e) => e.companyId === activeCompanyId).length
@@ -45,6 +48,10 @@ export default function Dashboard() {
         fill: item.atual < item.minimo ? 'hsl(var(--destructive))' : 'hsl(var(--success))',
       }))
   }, [activeCompanyId])
+
+  if (profile?.is_super_admin) {
+    return <SuperAdminOverview />
+  }
 
   return (
     <div className="space-y-6">
@@ -150,6 +157,68 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function SuperAdminOverview() {
+  const [stats, setStats] = useState({ companies: 0, activeSubs: 0, totalUsers: 0 })
+
+  useEffect(() => {
+    async function load() {
+      const { count: cCount } = await supabase
+        .from('companies')
+        .select('*', { count: 'exact', head: true })
+      const { count: sCount } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'Active')
+      const { count: uCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+      setStats({ companies: cCount || 0, activeSubs: sCount || 0, totalUsers: uCount || 0 })
+    }
+    load()
+  }, [])
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-500">
+          Visão Global do Sistema
+        </h2>
+        <p className="text-muted-foreground">Resumo administrativo da plataforma SaaS.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="animate-slide-right" style={{ animationDelay: '0ms' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Empresas Cadastradas</CardTitle>
+            <Building className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.companies}</div>
+          </CardContent>
+        </Card>
+        <Card className="animate-slide-right" style={{ animationDelay: '100ms' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assinaturas Ativas</CardTitle>
+            <CreditCard className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeSubs}</div>
+          </CardContent>
+        </Card>
+        <Card className="animate-slide-right" style={{ animationDelay: '200ms' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuários Totais</CardTitle>
+            <Users className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
           </CardContent>
         </Card>
       </div>
