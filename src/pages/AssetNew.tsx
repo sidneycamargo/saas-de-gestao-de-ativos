@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
@@ -28,11 +29,20 @@ export default function AssetNew() {
   const navigate = useNavigate()
   const { activeCompanyId } = useCompanyStore()
   const [categories, setCategories] = useState<any[]>([])
+  const [locators, setLocators] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
+    type: 'asset',
     name: '',
     description: '',
     category_id: '',
+    sku: '',
+    patrimony: '',
+    locator_id: '',
+    serial: '',
+    stock: 0,
+    min_stock: 0,
+    price: 0,
   })
 
   useEffect(() => {
@@ -42,30 +52,39 @@ export default function AssetNew() {
         .select('*')
         .eq('company_id', activeCompanyId)
         .order('name')
-        .then(({ data }) => {
-          if (data) setCategories(data)
-        })
+        .then(({ data }) => setCategories(data || []))
+      supabase
+        .from('locators')
+        .select('*')
+        .eq('company_id', activeCompanyId)
+        .order('name')
+        .then(({ data }) => setLocators(data || []))
     }
   }, [activeCompanyId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.category_id) {
-      toast({ title: 'Aviso', description: 'Selecione uma categoria.', variant: 'destructive' })
-      return
-    }
+    if (!formData.name) return
 
     const { error } = await supabase.from('assets').insert({
+      company_id: activeCompanyId,
+      type: formData.type,
       name: formData.name,
       description: formData.description,
-      category_id: formData.category_id,
-      company_id: activeCompanyId,
+      category_id: formData.category_id || null,
+      sku: formData.sku,
+      patrimony: formData.patrimony,
+      locator_id: formData.locator_id || null,
+      serial: formData.serial,
+      stock: formData.stock,
+      min_stock: formData.min_stock,
+      price: formData.price,
     })
 
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
     } else {
-      toast({ title: 'Ativo Cadastrado', description: 'O ativo foi salvo com sucesso.' })
+      toast({ title: 'Ativo Cadastrado', description: 'O registro foi salvo com sucesso.' })
       navigate('/inventory')
     }
   }
@@ -77,23 +96,47 @@ export default function AssetNew() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Novo Ativo</h2>
-          <p className="text-muted-foreground">Cadastre um novo ativo no sistema.</p>
+          <h2 className="text-3xl font-bold tracking-tight">Novo Registro</h2>
+          <p className="text-muted-foreground">
+            Cadastre um novo ativo, equipamento ou peça no sistema.
+          </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Card className="animate-fade-in-up">
           <CardHeader>
-            <CardTitle>Informações do Ativo</CardTitle>
+            <CardTitle>Informações Principais</CardTitle>
             <CardDescription>
-              Preencha os detalhes essenciais para controle e gerenciamento do ativo.
+              Preencha os detalhes essenciais para controle e gerenciamento.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-3 pb-4 border-b">
+              <Label className="text-base">Tipo de Registro</Label>
+              <RadioGroup
+                value={formData.type}
+                onValueChange={(v) => setFormData({ ...formData, type: v })}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="asset" id="t-asset" />
+                  <Label htmlFor="t-asset">Ativo Geral</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="equipment" id="t-eq" />
+                  <Label htmlFor="t-eq">Equipamento</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="part" id="t-part" />
+                  <Label htmlFor="t-part">Peça / Insumo</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="name">Nome do Ativo</Label>
+                <Label htmlFor="name">Nome / Título</Label>
                 <Input
                   id="name"
                   required
@@ -103,10 +146,9 @@ export default function AssetNew() {
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
                 <Select
-                  required
                   value={formData.category_id}
                   onValueChange={(v) => setFormData({ ...formData, category_id: v })}
                 >
@@ -123,12 +165,102 @@ export default function AssetNew() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="locator">Localização Física</Label>
+                <Select
+                  value={formData.locator_id}
+                  onValueChange={(v) => setFormData({ ...formData, locator_id: v })}
+                >
+                  <SelectTrigger id="locator">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locators.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(formData.type === 'equipment' || formData.type === 'part') && (
+                <div className="space-y-2">
+                  <Label htmlFor="sku">SKU / Referência</Label>
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {formData.type === 'equipment' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="patrimony">Tombamento / Patrimônio</Label>
+                    <Input
+                      id="patrimony"
+                      value={formData.patrimony}
+                      onChange={(e) => setFormData({ ...formData, patrimony: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serial">Nº de Série</Label>
+                    <Input
+                      id="serial"
+                      value={formData.serial}
+                      onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {formData.type === 'part' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Estoque Atual</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      value={formData.stock}
+                      onChange={(e) =>
+                        setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min_stock">Estoque Mínimo</Label>
+                    <Input
+                      id="min_stock"
+                      type="number"
+                      value={formData.min_stock}
+                      onChange={(e) =>
+                        setFormData({ ...formData, min_stock: parseInt(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Valor Unitário</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea
                   id="description"
-                  placeholder="Detalhes adicionais, especificações técnicas, etc..."
-                  className="min-h-[100px]"
+                  placeholder="Detalhes adicionais, especificações técnicas..."
+                  className="min-h-[80px]"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
@@ -139,8 +271,8 @@ export default function AssetNew() {
             <Button variant="outline" type="button" onClick={() => navigate('/inventory')}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!formData.name || !formData.category_id}>
-              <Save className="w-4 h-4 mr-2" /> Salvar Ativo
+            <Button type="submit" disabled={!formData.name}>
+              <Save className="w-4 h-4 mr-2" /> Salvar Registro
             </Button>
           </CardFooter>
         </Card>

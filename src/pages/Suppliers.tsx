@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,52 +20,85 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import useCompanyStore from '@/stores/useCompanyStore'
-import { suppliers as initialSuppliers } from '@/lib/mock-data'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Suppliers() {
   const { activeCompanyId } = useCompanyStore()
-  const [suppliers, setSuppliers] = useState(initialSuppliers)
+  const [suppliers, setSuppliers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    contactName: '',
+    contact_name: '',
     email: '',
     phone: '',
     whatsapp: '',
   })
 
-  const filtered = suppliers.filter((s) => s.companyId === activeCompanyId)
+  const fetchSuppliers = async () => {
+    if (!activeCompanyId) return
+    const { data } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('company_id', activeCompanyId)
+      .order('name')
+    if (data) setSuppliers(data)
+  }
+
+  useEffect(() => {
+    fetchSuppliers()
+  }, [activeCompanyId])
 
   const openDialog = (sup?: any) => {
     if (sup) {
       setEditingId(sup.id)
-      setFormData(sup)
+      setFormData({
+        name: sup.name,
+        contact_name: sup.contact_name || '',
+        email: sup.email || '',
+        phone: sup.phone || '',
+        whatsapp: sup.whatsapp || '',
+      })
     } else {
       setEditingId(null)
-      setFormData({ name: '', contactName: '', email: '', phone: '', whatsapp: '' })
+      setFormData({ name: '', contact_name: '', email: '', phone: '', whatsapp: '' })
     }
     setIsOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!formData.name) return
     if (editingId) {
-      setSuppliers(suppliers.map((s) => (s.id === editingId ? { ...s, ...formData } : s)))
-      toast({ title: 'Fornecedor atualizado' })
+      const { error } = await supabase.from('suppliers').update(formData).eq('id', editingId)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Fornecedor atualizado' })
+        setIsOpen(false)
+        fetchSuppliers()
+      }
     } else {
-      setSuppliers([
-        ...suppliers,
-        { ...formData, id: `sup-${Date.now()}`, companyId: activeCompanyId },
-      ])
-      toast({ title: 'Fornecedor cadastrado' })
+      const { error } = await supabase
+        .from('suppliers')
+        .insert({ ...formData, company_id: activeCompanyId })
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Fornecedor cadastrado' })
+        setIsOpen(false)
+        fetchSuppliers()
+      }
     }
-    setIsOpen(false)
   }
 
-  const handleDelete = (id: string) => {
-    setSuppliers(suppliers.filter((s) => s.id !== id))
-    toast({ title: 'Fornecedor removido', variant: 'destructive' })
+  const handleDelete = async (id: string) => {
+    if (confirm('Deseja excluir este fornecedor?')) {
+      const { error } = await supabase.from('suppliers').delete().eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Fornecedor removido' })
+        fetchSuppliers()
+      }
+    }
   }
 
   return (
@@ -95,10 +128,10 @@ export default function Suppliers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => (
+              {suppliers.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell>{s.contactName}</TableCell>
+                  <TableCell>{s.contact_name}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
                     {s.phone} <br />
@@ -119,7 +152,7 @@ export default function Suppliers() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {suppliers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     Nenhum fornecedor cadastrado nesta unidade.
@@ -147,8 +180,8 @@ export default function Suppliers() {
             <div className="space-y-2">
               <Label>Nome do Contato</Label>
               <Input
-                value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                value={formData.contact_name}
+                onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
@@ -180,7 +213,9 @@ export default function Suppliers() {
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Salvar</Button>
+            <Button onClick={handleSave} disabled={!formData.name}>
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

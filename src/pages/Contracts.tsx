@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,67 +28,102 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import useCompanyStore from '@/stores/useCompanyStore'
-import { contracts as initialContracts, suppliers } from '@/lib/mock-data'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Contracts() {
   const { activeCompanyId } = useCompanyStore()
-  const [contracts, setContracts] = useState(initialContracts)
+  const [contracts, setContracts] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    supplierId: '',
-    registrationDate: '',
-    startDate: '',
-    endDate: '',
-    renewalWithin: false,
-    renewalAfter: false,
+    supplier_id: '',
+    registration_date: '',
+    start_date: '',
+    end_date: '',
+    renewal_within: false,
+    renewal_after: false,
   })
 
-  const filteredContracts = contracts.filter((c) => c.companyId === activeCompanyId)
-  const activeSuppliers = suppliers.filter((s) => s.companyId === activeCompanyId)
+  const fetchData = async () => {
+    if (!activeCompanyId) return
+    const [cRes, sRes] = await Promise.all([
+      supabase
+        .from('contracts')
+        .select('*, suppliers(name)')
+        .eq('company_id', activeCompanyId)
+        .order('registration_date', { ascending: false }),
+      supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
+    ])
+    if (cRes.data) setContracts(cRes.data)
+    if (sRes.data) setSuppliers(sRes.data)
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [activeCompanyId])
 
   const openDialog = (con?: any) => {
     if (con) {
       setEditingId(con.id)
-      setFormData(con)
+      setFormData({
+        supplier_id: con.supplier_id,
+        registration_date: con.registration_date,
+        start_date: con.start_date,
+        end_date: con.end_date,
+        renewal_within: con.renewal_within,
+        renewal_after: con.renewal_after,
+      })
     } else {
       setEditingId(null)
       setFormData({
-        supplierId: '',
-        registrationDate: new Date().toISOString().split('T')[0],
-        startDate: '',
-        endDate: '',
-        renewalWithin: false,
-        renewalAfter: false,
+        supplier_id: '',
+        registration_date: new Date().toISOString().split('T')[0],
+        start_date: '',
+        end_date: '',
+        renewal_within: false,
+        renewal_after: false,
       })
     }
     setIsOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!formData.supplier_id) return
     if (editingId) {
-      setContracts(contracts.map((c) => (c.id === editingId ? { ...c, ...formData } : c)))
-      toast({ title: 'Contrato atualizado' })
+      const { error } = await supabase.from('contracts').update(formData).eq('id', editingId)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Contrato atualizado' })
+        setIsOpen(false)
+        fetchData()
+      }
     } else {
-      setContracts([
-        ...contracts,
-        { ...formData, id: `con-${Date.now()}`, companyId: activeCompanyId },
-      ])
-      toast({ title: 'Contrato cadastrado' })
+      const { error } = await supabase
+        .from('contracts')
+        .insert({ ...formData, company_id: activeCompanyId })
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Contrato cadastrado' })
+        setIsOpen(false)
+        fetchData()
+      }
     }
-    setIsOpen(false)
   }
 
-  const handleDelete = (id: string) => {
-    setContracts(contracts.filter((c) => c.id !== id))
-    toast({ title: 'Contrato removido', variant: 'destructive' })
+  const handleDelete = async (id: string) => {
+    if (confirm('Deseja remover este contrato?')) {
+      const { error } = await supabase.from('contracts').delete().eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Contrato removido' })
+        fetchData()
+      }
+    }
   }
-
-  const getSupplierName = (id: string) =>
-    activeSuppliers.find((s) => s.id === id)?.name || 'Desconhecido'
 
   return (
     <div className="space-y-6">
@@ -115,28 +150,37 @@ export default function Contracts() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContracts.map((c) => (
+              {contracts.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell className="font-medium">{getSupplierName(c.supplierId)}</TableCell>
+                  <TableCell className="font-medium">{c.suppliers?.name}</TableCell>
                   <TableCell>
-                    {new Date(c.registrationDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    {c.registration_date
+                      ? new Date(c.registration_date).toLocaleDateString('pt-BR', {
+                          timeZone: 'UTC',
+                        })
+                      : '-'}
                   </TableCell>
                   <TableCell>
-                    {new Date(c.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} até{' '}
-                    {new Date(c.endDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                    {c.start_date
+                      ? new Date(c.start_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                      : '-'}{' '}
+                    até{' '}
+                    {c.end_date
+                      ? new Date(c.end_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                      : '-'}
                   </TableCell>
                   <TableCell className="space-y-1">
-                    {c.renewalWithin && (
+                    {c.renewal_within && (
                       <Badge variant="outline" className="text-xs mr-1">
                         Dentro do período
                       </Badge>
                     )}
-                    {c.renewalAfter && (
+                    {c.renewal_after && (
                       <Badge variant="outline" className="text-xs">
                         Após período
                       </Badge>
                     )}
-                    {!c.renewalWithin && !c.renewalAfter && (
+                    {!c.renewal_within && !c.renewal_after && (
                       <span className="text-muted-foreground text-xs">Sem renovação</span>
                     )}
                   </TableCell>
@@ -155,10 +199,10 @@ export default function Contracts() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredContracts.length === 0 && (
+              {contracts.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Nenhum contrato cadastrado nesta unidade.
+                    Nenhum contrato cadastrado.
                   </TableCell>
                 </TableRow>
               )}
@@ -176,14 +220,14 @@ export default function Contracts() {
             <div className="space-y-2">
               <Label>Fornecedor</Label>
               <Select
-                value={formData.supplierId}
-                onValueChange={(v) => setFormData({ ...formData, supplierId: v })}
+                value={formData.supplier_id}
+                onValueChange={(v) => setFormData({ ...formData, supplier_id: v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeSuppliers.map((s) => (
+                  {suppliers.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>
@@ -196,24 +240,24 @@ export default function Contracts() {
                 <Label>Data de Registro</Label>
                 <Input
                   type="date"
-                  value={formData.registrationDate}
-                  onChange={(e) => setFormData({ ...formData, registrationDate: e.target.value })}
+                  value={formData.registration_date}
+                  onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Data Início</Label>
                 <Input
                   type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Data Final</Label>
                 <Input
                   type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
@@ -221,20 +265,18 @@ export default function Contracts() {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="ren-in"
-                  checked={formData.renewalWithin}
-                  onCheckedChange={(c) => setFormData({ ...formData, renewalWithin: !!c })}
+                  checked={formData.renewal_within}
+                  onCheckedChange={(c) => setFormData({ ...formData, renewal_within: !!c })}
                 />
-                <Label htmlFor="ren-in">
-                  Possibilidade de renovação dentro do período inicial e final
-                </Label>
+                <Label htmlFor="ren-in">Renovação dentro do período</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="ren-out"
-                  checked={formData.renewalAfter}
-                  onCheckedChange={(c) => setFormData({ ...formData, renewalAfter: !!c })}
+                  checked={formData.renewal_after}
+                  onCheckedChange={(c) => setFormData({ ...formData, renewal_after: !!c })}
                 />
-                <Label htmlFor="ren-out">Possibilidade de renovação após o período final</Label>
+                <Label htmlFor="ren-out">Renovação após o período</Label>
               </div>
             </div>
           </div>
@@ -242,7 +284,9 @@ export default function Contracts() {
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Salvar</Button>
+            <Button onClick={handleSave} disabled={!formData.supplier_id}>
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

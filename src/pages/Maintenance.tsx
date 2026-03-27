@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Calendar as CalendarIcon, PhoneCall } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,15 +33,17 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from '@/hooks/use-toast'
 import useCompanyStore from '@/stores/useCompanyStore'
-import { maintenances as initialMaintenances, suppliers, equipment } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Maintenance() {
   const { activeCompanyId } = useCompanyStore()
-  const activeEquipments = equipment.filter((e) => e.companyId === activeCompanyId)
-  const activeSuppliers = suppliers.filter((s) => s.companyId === activeCompanyId)
-  const filteredMaintenances = initialMaintenances.filter((m) => m.companyId === activeCompanyId)
+  const [maintenances, setMaintenances] = useState<any[]>([])
+  const [equipments, setEquipments] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
 
   const [callOpen, setCallOpen] = useState(false)
+  const [osOpen, setOsOpen] = useState(false)
+
   const [callData, setCallData] = useState({
     equipmentId: '',
     supplierId: '',
@@ -49,26 +51,86 @@ export default function Maintenance() {
     primaryChannel: '',
   })
 
-  const selectedSupplier = activeSuppliers.find((s) => s.id === callData.supplierId)
+  const [osData, setOsData] = useState({
+    equipmentId: '',
+    type: '',
+    date: '',
+  })
+
+  const fetchData = async () => {
+    if (!activeCompanyId) return
+    const [mRes, eRes, sRes] = await Promise.all([
+      supabase
+        .from('maintenances')
+        .select('*, assets(name)')
+        .eq('company_id', activeCompanyId)
+        .order('date', { ascending: false }),
+      supabase
+        .from('assets')
+        .select('*')
+        .eq('company_id', activeCompanyId)
+        .eq('type', 'equipment')
+        .order('name'),
+      supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
+    ])
+    if (mRes.data) setMaintenances(mRes.data)
+    if (eRes.data) setEquipments(eRes.data)
+    if (sRes.data) setSuppliers(sRes.data)
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [activeCompanyId])
+
+  const selectedSupplier = suppliers.find((s) => s.id === callData.supplierId)
 
   const handleToggleChannel = (channel: string, checked: boolean) => {
     setCallData((prev) => {
       const newChannels = checked
         ? [...prev.channels, channel]
         : prev.channels.filter((c) => c !== channel)
-
       const newPrimary = !checked && prev.primaryChannel === channel ? '' : prev.primaryChannel
       return { ...prev, channels: newChannels, primaryChannel: newPrimary }
     })
   }
 
-  const handleSaveOS = () => {
-    toast({ title: 'Ordem criada', description: 'A ordem de serviço foi agendada com sucesso.' })
+  const handleSaveOS = async () => {
+    if (!osData.equipmentId || !osData.type || !osData.date) return
+    const { error } = await supabase.from('maintenances').insert({
+      company_id: activeCompanyId,
+      asset_id: osData.equipmentId,
+      type: osData.type === 'prev' ? 'Preventiva' : 'Corretiva',
+      date: osData.date,
+      status: 'Pendente',
+      technician: 'Interno',
+    })
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Ordem criada' })
+      setOsOpen(false)
+      fetchData()
+    }
   }
 
-  const handleSaveCall = () => {
-    toast({ title: 'Chamado Aberto', description: 'Solicitação de serviço enviada com sucesso.' })
-    setCallOpen(false)
+  const handleSaveCall = async () => {
+    if (!callData.equipmentId || !callData.supplierId) return
+    const { error } = await supabase.from('maintenances').insert({
+      company_id: activeCompanyId,
+      asset_id: callData.equipmentId,
+      type: 'Chamado Externo',
+      date: new Date().toISOString().split('T')[0],
+      status: 'Pendente',
+      technician: selectedSupplier?.name || 'Externo',
+    })
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({
+        title: 'Chamado Aberto',
+        description: 'Solicitação de serviço registrada com sucesso.',
+      })
+      setCallOpen(false)
+      fetchData()
+    }
   }
 
   return (
@@ -97,10 +159,10 @@ export default function Maintenance() {
                   <Label>Equipamento</Label>
                   <Select onValueChange={(v) => setCallData({ ...callData, equipmentId: v })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o equipamento" />
+                      <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeEquipments.map((e) => (
+                      {equipments.map((e) => (
                         <SelectItem key={e.id} value={e.id}>
                           {e.name}
                         </SelectItem>
@@ -112,10 +174,10 @@ export default function Maintenance() {
                   <Label>Fornecedor / Assistência</Label>
                   <Select onValueChange={(v) => setCallData({ ...callData, supplierId: v })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o fornecedor" />
+                      <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeSuppliers.map((s) => (
+                      {suppliers.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name}
                         </SelectItem>
@@ -204,7 +266,7 @@ export default function Maintenance() {
             </DialogContent>
           </Dialog>
 
-          <Dialog>
+          <Dialog open={osOpen} onOpenChange={setOsOpen}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" /> Nova OS
@@ -220,12 +282,12 @@ export default function Maintenance() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Equipamento</Label>
-                  <Select>
+                  <Select onValueChange={(v) => setOsData({ ...osData, equipmentId: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {activeEquipments.map((e) => (
+                      {equipments.map((e) => (
                         <SelectItem key={e.id} value={e.id}>
                           {e.name}
                         </SelectItem>
@@ -235,7 +297,7 @@ export default function Maintenance() {
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo</Label>
-                  <Select>
+                  <Select onValueChange={(v) => setOsData({ ...osData, type: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
@@ -249,12 +311,20 @@ export default function Maintenance() {
                   <Label>Data Programada</Label>
                   <div className="relative">
                     <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input type="date" className="pl-9" />
+                    <Input
+                      type="date"
+                      className="pl-9"
+                      value={osData.date}
+                      onChange={(e) => setOsData({ ...osData, date: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={handleSaveOS}>
+                <Button
+                  onClick={handleSaveOS}
+                  disabled={!osData.equipmentId || !osData.type || !osData.date}
+                >
                   Salvar Ordem
                 </Button>
               </DialogFooter>
@@ -265,13 +335,12 @@ export default function Maintenance() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Próximas Manutenções</CardTitle>
+          <CardTitle>Histórico e Próximas Manutenções</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>OS</TableHead>
                 <TableHead>Equipamento</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Data</TableHead>
@@ -280,13 +349,16 @@ export default function Maintenance() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMaintenances.length > 0 ? (
-                filteredMaintenances.map((m) => (
+              {maintenances.length > 0 ? (
+                maintenances.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.id}</TableCell>
-                    <TableCell>{m.equip}</TableCell>
+                    <TableCell className="font-medium">{m.assets?.name}</TableCell>
                     <TableCell>{m.type}</TableCell>
-                    <TableCell>{new Date(m.date).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>
+                      {m.date
+                        ? new Date(m.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                        : '-'}
+                    </TableCell>
                     <TableCell>{m.technician}</TableCell>
                     <TableCell>
                       <StatusBadge status={m.status} />
@@ -295,8 +367,8 @@ export default function Maintenance() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Nenhuma manutenção agendada.
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Nenhuma manutenção registrada.
                   </TableCell>
                 </TableRow>
               )}

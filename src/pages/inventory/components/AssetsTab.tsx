@@ -34,24 +34,33 @@ export function AssetsTab() {
   const { activeCompanyId } = useCompanyStore()
   const [assets, setAssets] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
+  const [locators, setLocators] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ name: '', description: '', category_id: '' })
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    category_id: '',
+    locator_id: '',
+  })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [assetsRes, catsRes] = await Promise.all([
+    const [assetsRes, catsRes, locsRes] = await Promise.all([
       supabase
         .from('assets')
-        .select('*, categories(name)')
+        .select('*, categories(name), locators(name)')
         .eq('company_id', activeCompanyId)
+        .in('type', ['asset', null])
         .order('created_at', { ascending: false }),
       supabase.from('categories').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase.from('locators').select('*').eq('company_id', activeCompanyId).order('name'),
     ])
     if (assetsRes.data) setAssets(assetsRes.data)
     if (catsRes.data) setCategories(catsRes.data)
+    if (locsRes.data) setLocators(locsRes.data)
   }
 
   useEffect(() => {
@@ -68,6 +77,7 @@ export function AssetsTab() {
       name: asset.name,
       description: asset.description || '',
       category_id: asset.category_id || '',
+      locator_id: asset.locator_id || '',
     })
     setIsOpen(true)
   }
@@ -75,9 +85,8 @@ export function AssetsTab() {
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este ativo?')) {
       const { error } = await supabase.from('assets').delete().eq('id', id)
-      if (error) {
-        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      } else {
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
         toast({ title: 'Ativo removido' })
         fetchData()
       }
@@ -85,20 +94,19 @@ export function AssetsTab() {
   }
 
   const handleSave = async () => {
-    if (!formData.name || !formData.category_id) return
-
+    if (!formData.name) return
     const { error } = await supabase
       .from('assets')
       .update({
         name: formData.name,
         description: formData.description,
-        category_id: formData.category_id,
+        category_id: formData.category_id || null,
+        locator_id: formData.locator_id || null,
       })
       .eq('id', editingId)
 
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
       toast({ title: 'Ativo atualizado' })
       setIsOpen(false)
       fetchData()
@@ -121,7 +129,7 @@ export function AssetsTab() {
             <TableRow>
               <TableHead>Nome do Ativo</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Descrição</TableHead>
+              <TableHead>Local</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -131,9 +139,7 @@ export function AssetsTab() {
                 <TableRow key={item.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.categories?.name || '-'}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {item.description || '-'}
-                  </TableCell>
+                  <TableCell>{item.locators?.name || '-'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
                       <Edit2 className="w-4 h-4" />
@@ -152,7 +158,7 @@ export function AssetsTab() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                  Nenhum ativo encontrado nesta unidade.
+                  Nenhum ativo encontrado.
                 </TableCell>
               </TableRow>
             )}
@@ -183,9 +189,29 @@ export function AssetsTab() {
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">Sem Categoria</SelectItem>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Localização</Label>
+              <Select
+                value={formData.locator_id}
+                onValueChange={(v) => setFormData({ ...formData, locator_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem Local</SelectItem>
+                  {locators.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -203,7 +229,7 @@ export function AssetsTab() {
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={!formData.name || !formData.category_id}>
+            <Button onClick={handleSave} disabled={!formData.name}>
               Salvar
             </Button>
           </DialogFooter>

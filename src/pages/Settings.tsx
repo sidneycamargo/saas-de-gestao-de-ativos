@@ -1,17 +1,11 @@
-import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LdapTab } from './settings/components/LdapTab'
 import { UsersTab } from './settings/components/UsersTab'
 import { GroupsTab } from './settings/components/GroupsTab'
 import { LocatorsTab } from './settings/components/LocatorsTab'
 import { CategoriesTab } from './settings/components/CategoriesTab'
-import { systemUsers, systemGroups, systemLocators } from '@/lib/mock-data'
 
 export default function Settings() {
-  const [users, setUsers] = useState(systemUsers)
-  const [groups, setGroups] = useState(systemGroups)
-  const [locators, setLocators] = useState(systemLocators)
-
   return (
     <div className="space-y-6">
       <div>
@@ -31,13 +25,13 @@ export default function Settings() {
         </TabsList>
         <div className="mt-4">
           <TabsContent value="users">
-            <UsersTab users={users} setUsers={setUsers} groups={groups} />
+            <UsersTab />
           </TabsContent>
           <TabsContent value="groups">
-            <GroupsTab groups={groups} setGroups={setGroups} />
+            <GroupsTab />
           </TabsContent>
           <TabsContent value="locators">
-            <LocatorsTab locators={locators} setLocators={setLocators} />
+            <LocatorsTab />
           </TabsContent>
           <TabsContent value="categories">
             <CategoriesTab />

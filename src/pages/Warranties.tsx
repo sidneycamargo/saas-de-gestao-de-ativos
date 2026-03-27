@@ -1,109 +1,262 @@
-import { ShieldCheck, AlertTriangle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, ShieldCheck, AlertTriangle, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import useCompanyStore from '@/stores/useCompanyStore'
-
-const mockWarranties = [
-  {
-    id: 1,
-    companyId: 'c1',
-    type: 'Equipamento',
-    item: 'Torno CNC Romi',
-    provider: 'Fabricante Oficial',
-    start: '2022-05-10',
-    end: '2027-05-10',
-    progress: 80,
-    status: 'Ativa',
-  },
-  {
-    id: 2,
-    companyId: 'c1',
-    type: 'Peça',
-    item: 'Motor Elétrico M2 (Torno CNC)',
-    provider: 'Fornecedor A',
-    start: '2025-01-01',
-    end: '2026-01-01',
-    progress: 20,
-    status: 'Ativa',
-  },
-  {
-    id: 3,
-    companyId: 'c2',
-    type: 'Equipamento',
-    item: 'Empilhadeira Yale',
-    provider: 'Revenda B',
-    start: '2020-10-10',
-    end: '2023-10-10',
-    progress: 100,
-    status: 'Expirada',
-  },
-]
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 
 export default function Warranties() {
   const { activeCompanyId } = useCompanyStore()
-  const filteredWarranties = mockWarranties.filter((w) => w.companyId === activeCompanyId)
+  const [warranties, setWarranties] = useState<any[]>([])
+  const [assets, setAssets] = useState<any[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+
+  const [formData, setFormData] = useState({
+    asset_id: '',
+    type: 'Equipamento',
+    provider: '',
+    start_date: '',
+    end_date: '',
+  })
+
+  const fetchData = async () => {
+    if (!activeCompanyId) return
+    const [wRes, aRes] = await Promise.all([
+      supabase
+        .from('warranties')
+        .select('*, assets(name)')
+        .eq('company_id', activeCompanyId)
+        .order('end_date'),
+      supabase.from('assets').select('*').eq('company_id', activeCompanyId).order('name'),
+    ])
+    if (wRes.data) setWarranties(wRes.data)
+    if (aRes.data) setAssets(aRes.data)
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [activeCompanyId])
+
+  const handleSave = async () => {
+    if (!formData.asset_id || !formData.start_date || !formData.end_date) return
+    const { error } = await supabase.from('warranties').insert({
+      company_id: activeCompanyId,
+      ...formData,
+      status: new Date(formData.end_date) < new Date() ? 'Expirada' : 'Ativa',
+    })
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    else {
+      toast({ title: 'Garantia registrada' })
+      setIsOpen(false)
+      fetchData()
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Remover esta garantia?')) {
+      const { error } = await supabase.from('warranties').delete().eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Removida' })
+        fetchData()
+      }
+    }
+  }
+
+  const calcProgress = (start: string, end: string) => {
+    if (!start || !end) return 0
+    const s = new Date(start).getTime()
+    const e = new Date(end).getTime()
+    const now = new Date().getTime()
+    if (now > e) return 100
+    if (now < s) return 0
+    return Math.round(((now - s) / (e - s)) * 100)
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Garantias</h2>
-        <p className="text-muted-foreground">
-          Acompanhamento de prazos de garantia para equipamentos e peças substituídas.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Garantias</h2>
+          <p className="text-muted-foreground">
+            Acompanhamento de prazos de garantia para equipamentos e peças.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setFormData({ ...formData, start_date: '', end_date: '', provider: '', asset_id: '' })
+            setIsOpen(true)
+          }}
+        >
+          <Plus className="w-4 h-4 mr-2" /> Nova Garantia
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredWarranties.length > 0 ? (
-          filteredWarranties.map((w) => (
-            <Card
-              key={w.id}
-              className={w.status === 'Expirada' ? 'border-danger/50 bg-danger/5' : ''}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <Badge variant={w.type === 'Equipamento' ? 'default' : 'secondary'}>
-                    {w.type}
-                  </Badge>
-                  {w.status === 'Expirada' ? (
-                    <AlertTriangle className="h-5 w-5 text-danger" />
-                  ) : (
-                    <ShieldCheck className="h-5 w-5 text-success" />
-                  )}
-                </div>
-                <CardTitle className="text-lg mt-2">{w.item}</CardTitle>
-                <CardDescription>{w.provider}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Início: {new Date(w.start).toLocaleDateString('pt-BR')}
-                    </span>
-                    <span
-                      className={
-                        w.status === 'Expirada'
-                          ? 'text-danger font-medium'
-                          : 'text-foreground font-medium'
-                      }
-                    >
-                      Vence: {new Date(w.end).toLocaleDateString('pt-BR')}
-                    </span>
+        {warranties.length > 0 ? (
+          warranties.map((w) => {
+            const isExpired = w.status === 'Expirada' || new Date(w.end_date) < new Date()
+            const prog = calcProgress(w.start_date, w.end_date)
+            return (
+              <Card
+                key={w.id}
+                className={`relative group ${isExpired ? 'border-danger/50 bg-danger/5' : ''}`}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-danger hover:bg-danger/20"
+                  onClick={() => handleDelete(w.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <CardHeader className="pb-2 pr-10">
+                  <div className="flex justify-between items-start">
+                    <Badge variant={w.type === 'Equipamento' ? 'default' : 'secondary'}>
+                      {w.type}
+                    </Badge>
+                    {isExpired ? (
+                      <AlertTriangle className="h-5 w-5 text-danger" />
+                    ) : (
+                      <ShieldCheck className="h-5 w-5 text-success" />
+                    )}
                   </div>
-                  <Progress
-                    value={w.progress}
-                    className={`h-2 ${w.status === 'Expirada' ? '[&>div]:bg-danger' : '[&>div]:bg-success'}`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  <CardTitle className="text-lg mt-2">{w.assets?.name}</CardTitle>
+                  <CardDescription>{w.provider}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Início:{' '}
+                        {w.start_date
+                          ? new Date(w.start_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                          : '-'}
+                      </span>
+                      <span
+                        className={
+                          isExpired ? 'text-danger font-medium' : 'text-foreground font-medium'
+                        }
+                      >
+                        Vence:{' '}
+                        {w.end_date
+                          ? new Date(w.end_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                          : '-'}
+                      </span>
+                    </div>
+                    <Progress
+                      value={prog}
+                      className={`h-2 ${isExpired ? '[&>div]:bg-danger' : '[&>div]:bg-success'}`}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })
         ) : (
           <div className="col-span-3 text-muted-foreground py-8">
             Nenhuma garantia registrada nesta unidade.
           </div>
         )}
       </div>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Garantia</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Ativo Vinculado</Label>
+              <Select
+                value={formData.asset_id}
+                onValueChange={(v) => setFormData({ ...formData, asset_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {assets.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(v) => setFormData({ ...formData, type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Equipamento">Equipamento</SelectItem>
+                  <SelectItem value="Peça">Peça</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fornecedor / Fabricante</Label>
+              <Input
+                value={formData.provider}
+                onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data Início</Label>
+                <Input
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data Vencimento</Label>
+                <Input
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!formData.asset_id || !formData.start_date || !formData.end_date}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

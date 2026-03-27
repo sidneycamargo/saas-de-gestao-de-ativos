@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,19 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -40,83 +29,133 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase/client'
+import useCompanyStore from '@/stores/useCompanyStore'
 
-export function UsersTab({ users, setUsers, groups }: any) {
+export function UsersTab() {
+  const { activeCompanyId } = useCompanyStore()
+  const [memberships, setMemberships] = useState<any[]>([])
+  const [groups, setGroups] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
-    phone: '',
-    password: '',
     groupId: '',
-    status: 'Ativo',
-    twoFactorEnabled: false,
   })
 
-  const openDialog = (user?: any) => {
-    if (user) {
-      setEditingId(user.id)
-      setFormData({ ...user, password: '' })
+  const fetchData = async () => {
+    if (!activeCompanyId) return
+    const { data: grps } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('company_id', activeCompanyId)
+    if (grps) setGroups(grps)
+
+    const { data: mems } = await supabase
+      .from('company_memberships')
+      .select('*, groups(name)')
+      .eq('company_id', activeCompanyId)
+    if (mems && mems.length > 0) {
+      const userIds = mems.map((m) => m.user_id)
+      const { data: profs } = await supabase.from('profiles').select('*').in('id', userIds)
+
+      const merged = mems.map((m) => ({
+        ...m,
+        profile: profs?.find((p) => p.id === m.user_id),
+      }))
+      setMemberships(merged)
+    } else {
+      setMemberships([])
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [activeCompanyId])
+
+  const openDialog = (mem?: any) => {
+    if (mem) {
+      setEditingId(mem.id)
+      setFormData({
+        email: mem.profile?.email || '',
+        groupId: mem.group_id || '',
+      })
     } else {
       setEditingId(null)
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        password: '',
-        groupId: groups[0]?.id || '',
-        status: 'Ativo',
-        twoFactorEnabled: false,
-      })
+      setFormData({ email: '', groupId: groups[0]?.id || '' })
     }
     setIsOpen(true)
   }
 
-  const handleSave = () => {
-    if (formData.twoFactorEnabled && !formData.phone) {
-      toast({
-        title: 'Aviso de Segurança',
-        description: 'É obrigatório informar um celular para habilitar o 2FA.',
-        variant: 'destructive',
-      })
-      return
-    }
+  const handleSave = async () => {
+    if (!formData.email) return
 
     if (editingId) {
-      setUsers(users.map((u: any) => (u.id === editingId ? { ...u, ...formData } : u)))
-      toast({ title: 'Usuário atualizado', description: 'Os dados foram salvos com sucesso.' })
+      const { error } = await supabase
+        .from('company_memberships')
+        .update({ group_id: formData.groupId || null })
+        .eq('id', editingId)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Acesso atualizado' })
+        setIsOpen(false)
+        fetchData()
+      }
     } else {
-      setUsers([...users, { ...formData, id: `u${Date.now()}` }])
-      toast({ title: 'Usuário criado', description: 'O novo usuário foi adicionado.' })
+      // Find user by email
+      const { data: prof, error: errProf } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', formData.email)
+        .single()
+      if (!prof) {
+        toast({
+          title: 'Usuário não encontrado',
+          description:
+            'O usuário precisa ter um cadastro no sistema antes de ser vinculado à empresa.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const { error } = await supabase.from('company_memberships').insert({
+        company_id: activeCompanyId,
+        user_id: prof.id,
+        role: 'Member',
+        group_id: formData.groupId || null,
+      })
+      if (error)
+        toast({ title: 'Erro ao vincular', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Usuário vinculado', description: 'O acesso foi concedido com sucesso.' })
+        setIsOpen(false)
+        fetchData()
+      }
     }
-    setIsOpen(false)
   }
 
-  const confirmDelete = (id: string) => {
-    setUserToDelete(id)
-  }
-
-  const handleDelete = () => {
-    if (userToDelete) {
-      setUsers(users.filter((u: any) => u.id !== userToDelete))
-      toast({ title: 'Usuário removido', variant: 'destructive' })
-      setUserToDelete(null)
+  const handleDelete = async (id: string) => {
+    if (confirm('Deseja remover o acesso deste usuário à sua empresa?')) {
+      const { error } = await supabase.from('company_memberships').delete().eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Acesso removido' })
+        fetchData()
+      }
     }
   }
-
-  const getGroup = (id: string) => groups.find((g: any) => g.id === id)?.name || 'Desconhecido'
 
   return (
     <Card className="animate-fade-in-up">
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4 space-y-0">
         <div className="space-y-1">
           <CardTitle>Gerenciamento de Usuários</CardTitle>
-          <CardDescription>Controle de acesso e papéis do sistema.</CardDescription>
+          <CardDescription>
+            Controle de acesso e papéis vinculados aos usuários da sua empresa.
+          </CardDescription>
         </div>
         <Button onClick={() => openDialog()} className="w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" /> Novo Usuário
+          <Plus className="w-4 h-4 mr-2" /> Vincular Usuário
         </Button>
       </CardHeader>
       <CardContent>
@@ -133,16 +172,16 @@ export function UsersTab({ users, setUsers, groups }: any) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((u: any) => (
-              <TableRow key={u.id}>
-                <TableCell className="font-medium">{u.name}</TableCell>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>{u.phone || '-'}</TableCell>
+            {memberships.map((m: any) => (
+              <TableRow key={m.id}>
+                <TableCell className="font-medium">{m.profile?.name}</TableCell>
+                <TableCell>{m.profile?.email}</TableCell>
+                <TableCell>{m.profile?.phone || '-'}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{getGroup(u.groupId)}</Badge>
+                  <Badge variant="outline">{m.groups?.name || 'Padrão'}</Badge>
                 </TableCell>
                 <TableCell>
-                  {u.twoFactorEnabled ? (
+                  {m.profile?.two_factor_enabled ? (
                     <ShieldCheck className="w-4 h-4 text-success" />
                   ) : (
                     <ShieldAlert className="w-4 h-4 text-muted-foreground" />
@@ -151,22 +190,22 @@ export function UsersTab({ users, setUsers, groups }: any) {
                 <TableCell>
                   <Badge
                     className={
-                      u.status === 'Ativo'
+                      m.profile?.status === 'Ativo'
                         ? 'bg-success hover:bg-success/80'
-                        : 'bg-danger hover:bg-danger/80'
+                        : 'bg-secondary'
                     }
                   >
-                    {u.status}
+                    {m.profile?.status || 'Ativo'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => openDialog(u)}>
+                  <Button variant="ghost" size="icon" onClick={() => openDialog(m)}>
                     <Edit2 className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => confirmDelete(u.id)}
+                    onClick={() => handleDelete(m.id)}
                     className="text-danger"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -174,132 +213,67 @@ export function UsersTab({ users, setUsers, groups }: any) {
                 </TableCell>
               </TableRow>
             ))}
+            {memberships.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                  Nenhum usuário vinculado.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
-            <DialogDescription>Preencha os dados de acesso do usuário abaixo.</DialogDescription>
+            <DialogTitle>{editingId ? 'Alterar Acesso' : 'Vincular Usuário'}</DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? 'Altere o grupo de acesso do usuário selecionado.'
+                : 'Informe o e-mail de um usuário já cadastrado no sistema para dar acesso à sua empresa.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome Completo</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>
-                  Celular {formData.twoFactorEnabled && <span className="text-danger ml-1">*</span>}
-                </Label>
-                <Input
-                  placeholder="+55 11 99999-9999"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Senha {editingId && '(em branco p/ manter)'}</Label>
-                <Input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Grupo de Acesso</Label>
-                <Select
-                  value={formData.groupId}
-                  onValueChange={(v) => setFormData({ ...formData, groupId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.map((g: any) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(v) => setFormData({ ...formData, status: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ativo">Ativo</SelectItem>
-                    <SelectItem value="Inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 pt-2 border-t mt-2">
-              <Switch
-                id="2fa"
-                checked={formData.twoFactorEnabled}
-                onCheckedChange={(c) => setFormData({ ...formData, twoFactorEnabled: c })}
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                disabled={!!editingId}
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
-              <Label htmlFor="2fa" className="flex flex-col">
-                <span>Exigir Autenticação de Dois Fatores (2FA)</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  Será enviado um código SMS para o celular cadastrado durante o login.
-                </span>
-              </Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Grupo de Acesso</Label>
+              <Select
+                value={formData.groupId}
+                onValueChange={(v) => setFormData({ ...formData, groupId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sem Grupo Específico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem Grupo Específico</SelectItem>
+                  {groups.map((g: any) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Salvar</Button>
+            <Button onClick={handleSave} disabled={!formData.email}>
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={!!userToDelete} onOpenChange={(o) => !o && setUserToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não poderá ser desfeita. O usuário selecionado perderá o acesso
-              imediatamente. O histórico de auditoria será mantido.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-danger text-white hover:bg-danger/90"
-              onClick={handleDelete}
-            >
-              Remover Usuário
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   )
 }

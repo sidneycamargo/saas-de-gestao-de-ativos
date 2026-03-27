@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,31 +18,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
-import { equipment, parts } from '@/lib/mock-data'
+import { supabase } from '@/lib/supabase/client'
+import useCompanyStore from '@/stores/useCompanyStore'
 
-export function LocatorsTab({ locators, setLocators }: any) {
+export function LocatorsTab() {
+  const { activeCompanyId } = useCompanyStore()
+  const [locators, setLocators] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
+
+  const fetchLocators = async () => {
+    if (!activeCompanyId) return
+    const { data } = await supabase
+      .from('locators')
+      .select('*')
+      .eq('company_id', activeCompanyId)
+      .order('name')
+    if (data) setLocators(data)
+  }
+
+  useEffect(() => {
+    fetchLocators()
+  }, [activeCompanyId])
 
   const openDialog = (locator?: any) => {
     if (locator) {
       setEditingId(locator.id)
-      setFormData({ name: locator.name, description: locator.description })
+      setFormData({ name: locator.name, description: locator.description || '' })
     } else {
       setEditingId(null)
       setFormData({ name: '', description: '' })
@@ -50,41 +56,49 @@ export function LocatorsTab({ locators, setLocators }: any) {
     setIsOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast({ title: 'Aviso', description: 'O nome é obrigatório.', variant: 'destructive' })
       return
     }
 
     if (editingId) {
-      setLocators(locators.map((l: any) => (l.id === editingId ? { ...l, ...formData } : l)))
-      toast({ title: 'Localizador atualizado', description: 'As alterações foram salvas.' })
-    } else {
-      setLocators([...locators, { ...formData, id: `loc-${Date.now()}` }])
-      toast({ title: 'Localizador criado', description: 'O novo localizador foi adicionado.' })
-    }
-    setIsOpen(false)
-  }
-
-  const isLocatorInUse = (id: string) => {
-    return equipment.some((e) => e.locatorId === id) || parts.some((p) => p.locatorId === id)
-  }
-
-  const handleDelete = () => {
-    if (deleteId) {
-      if (isLocatorInUse(deleteId)) {
-        toast({
-          title: 'Erro de Exclusão',
-          description: 'Este localizador está em uso por um ou mais produtos no inventário.',
-          variant: 'destructive',
+      const { error } = await supabase
+        .from('locators')
+        .update({
+          name: formData.name,
+          description: formData.description,
         })
-        setDeleteId(null)
-        return
+        .eq('id', editingId)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Localizador atualizado', description: 'As alterações foram salvas.' })
+        setIsOpen(false)
+        fetchLocators()
       }
+    } else {
+      const { error } = await supabase.from('locators').insert({
+        company_id: activeCompanyId,
+        name: formData.name,
+        description: formData.description,
+      })
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Localizador criado', description: 'O novo localizador foi adicionado.' })
+        setIsOpen(false)
+        fetchLocators()
+      }
+    }
+  }
 
-      setLocators(locators.filter((l: any) => l.id !== deleteId))
-      toast({ title: 'Localizador removido', variant: 'default' })
-      setDeleteId(null)
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza? Esta ação removerá o vínculo deste local dos ativos associados.')) {
+      const { error } = await supabase.from('locators').delete().eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Localizador removido' })
+        fetchLocators()
+      }
     }
   }
 
@@ -122,7 +136,7 @@ export function LocatorsTab({ locators, setLocators }: any) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setDeleteId(l.id)}
+                    onClick={() => handleDelete(l.id)}
                     className="text-danger"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -130,6 +144,13 @@ export function LocatorsTab({ locators, setLocators }: any) {
                 </TableCell>
               </TableRow>
             ))}
+            {locators.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                  Nenhum localizador cadastrado.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
@@ -168,27 +189,6 @@ export function LocatorsTab({ locators, setLocators }: any) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Localizador?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Se houverem produtos vinculados a este local, a
-              exclusão será bloqueada para garantir a integridade dos dados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-danger text-white hover:bg-danger/90"
-              onClick={handleDelete}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   )
 }
