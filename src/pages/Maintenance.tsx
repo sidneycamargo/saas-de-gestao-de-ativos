@@ -9,6 +9,7 @@ import {
   XCircle,
   MoreVertical,
   MailCheck,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -87,7 +88,7 @@ export default function Maintenance() {
 
   const [data, setData] = useState({
     maintenances: [] as any[],
-    equipments: [] as any[],
+    assets: [] as any[],
     suppliers: [] as any[],
     warranties: [] as any[],
   })
@@ -96,7 +97,7 @@ export default function Maintenance() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    equipmentId: '',
+    assetId: '',
     supplierId: '',
     type: 'Corretiva',
     date: new Date().toISOString().split('T')[0],
@@ -110,28 +111,22 @@ export default function Maintenance() {
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [mRes, eRes, sRes, wRes] = await Promise.all([
+    const [mRes, aRes, sRes, wRes] = await Promise.all([
       supabase
         .from('maintenances')
         .select('*, assets(name)')
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('assets')
-        .select('*')
-        .eq('company_id', activeCompanyId)
-        .eq('type', 'equipment')
-        .order('name'),
+      supabase.from('assets').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase
         .from('warranties')
         .select('*, warranty_suppliers(supplier_id)')
-        .eq('company_id', activeCompanyId)
-        .eq('status', 'Ativa'),
+        .eq('company_id', activeCompanyId),
     ])
     setData({
       maintenances: mRes.data || [],
-      equipments: eRes.data || [],
+      assets: aRes.data || [],
       suppliers: sRes.data || [],
       warranties: wRes.data || [],
     })
@@ -173,7 +168,7 @@ export default function Maintenance() {
     if (m) {
       setEditingId(m.id)
       setFormData({
-        equipmentId: m.asset_id || '',
+        assetId: m.asset_id || '',
         supplierId: '',
         type: m.type || 'Corretiva',
         date: m.date || new Date().toISOString().split('T')[0],
@@ -187,7 +182,7 @@ export default function Maintenance() {
     } else {
       setEditingId(null)
       setFormData({
-        equipmentId: '',
+        assetId: '',
         supplierId: '',
         type: 'Corretiva',
         date: new Date().toISOString().split('T')[0],
@@ -228,16 +223,16 @@ export default function Maintenance() {
   }
 
   const handleSave = async () => {
-    if (!formData.equipmentId)
+    if (!formData.assetId)
       return toast({
         title: 'Atenção',
-        description: 'Selecione um equipamento.',
+        description: 'Selecione um ativo.',
         variant: 'destructive',
       })
 
     let payload: any = {
       company_id: activeCompanyId,
-      asset_id: formData.equipmentId,
+      asset_id: formData.assetId,
       description: formData.description,
       priority: formData.priority,
       origin: formData.origin,
@@ -298,8 +293,15 @@ export default function Maintenance() {
     }
   }
 
+  const isWarrantyActive = (w: any) => {
+    if (!w.end_date) return true
+    const end = new Date(w.end_date)
+    end.setHours(23, 59, 59, 999)
+    return end.getTime() >= new Date().getTime()
+  }
+
   const warrantySupplierIds = data.warranties
-    .filter((w) => w.asset_id === formData.equipmentId)
+    .filter((w) => w.asset_id === formData.assetId && isWarrantyActive(w))
     .flatMap((w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [])
 
   return (
@@ -337,7 +339,7 @@ export default function Maintenance() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Equipamento</TableHead>
+                <TableHead>Ativo</TableHead>
                 <TableHead>Tipo / Origem</TableHead>
                 <TableHead>Data Programada</TableHead>
                 <TableHead>Prioridade</TableHead>
@@ -441,35 +443,45 @@ export default function Maintenance() {
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Equipamento *</Label>
+              <Label>Ativo *</Label>
               <Select
-                value={formData.equipmentId}
+                value={formData.assetId}
                 onValueChange={(v) => {
                   let nextSupplierId = formData.supplierId
-                  if (callMode === 'external') {
-                    const activeWs = data.warranties.filter((w) => w.asset_id === v)
-                    const sids = activeWs.flatMap(
-                      (w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
-                    )
-                    if (sids.length > 0 && !sids.includes(nextSupplierId)) {
-                      nextSupplierId = sids[0]
-                    }
+                  const activeWs = data.warranties.filter(
+                    (w) => w.asset_id === v && isWarrantyActive(w),
+                  )
+                  const sids = activeWs.flatMap(
+                    (w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
+                  )
+                  if (sids.length > 0 && (!nextSupplierId || !sids.includes(nextSupplierId))) {
+                    nextSupplierId = sids[0]
                   }
-                  setFormData({ ...formData, equipmentId: v, supplierId: nextSupplierId })
+                  setFormData({ ...formData, assetId: v, supplierId: nextSupplierId })
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
+                  <SelectValue placeholder="Selecione o ativo..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {data.equipments.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name}
+                  {data.assets.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {warrantySupplierIds.length > 0 && formData.assetId && callMode !== 'external' && (
+              <div className="bg-primary/10 text-primary p-3 rounded-md flex items-start gap-2">
+                <ShieldCheck className="w-5 h-5 shrink-0" />
+                <div className="text-sm">
+                  <strong>Garantia Ativa!</strong> Este ativo possui fornecedores responsáveis pela
+                  garantia. Considere alterar o tipo para "Acionar Fornecedor".
+                </div>
+              </div>
+            )}
 
             {callMode === 'quick' && (
               <div className="space-y-2">
@@ -560,7 +572,7 @@ export default function Maintenance() {
                         })}
                       </SelectContent>
                     </Select>
-                    {warrantySupplierIds.length > 0 && formData.equipmentId && (
+                    {warrantySupplierIds.length > 0 && formData.assetId && (
                       <p className="text-xs text-primary mt-1 flex items-center">
                         <ShieldCheck className="w-3 h-3 mr-1" /> Este ativo possui garantia ativa.
                         Fornecedores sugeridos estão marcados.
