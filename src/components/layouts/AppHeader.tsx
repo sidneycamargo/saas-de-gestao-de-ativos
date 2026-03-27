@@ -50,6 +50,9 @@ export function AppHeader() {
     fetchRole()
   }, [activeCompanyId, session?.user?.id, profile?.is_super_admin])
 
+  const userName = profile?.name || session?.user?.user_metadata?.name || 'Usuário'
+  const userEmail = profile?.email || session?.user?.email || ''
+
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b bg-card">
       <div className="flex items-center gap-4 flex-1">
@@ -75,10 +78,10 @@ export function AppHeader() {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8 border">
                 <AvatarImage
-                  src={`https://img.usecurling.com/ppl/thumbnail?seed=${profile?.id || '42'}`}
-                  alt={profile?.name || 'Avatar'}
+                  src={`https://img.usecurling.com/ppl/thumbnail?seed=${session?.user?.id || '42'}`}
+                  alt={userName}
                 />
-                <AvatarFallback>{profile?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -86,8 +89,8 @@ export function AppHeader() {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-2">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{profile?.name || 'Usuário'}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{profile?.email}</p>
+                  <p className="text-sm font-medium leading-none">{userName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                 </div>
                 {role && (
                   <div className="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-md w-fit mt-1">

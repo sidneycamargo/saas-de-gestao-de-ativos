@@ -34,33 +34,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-      if (data) setProfile(data)
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    if (data) {
+      setProfile(data)
     }
+    return data
+  }
 
+  useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setProfile(data)
+          })
       } else {
         setProfile(null)
         setLoading(false)
       }
     })
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false))
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setProfile(data)
+            setLoading(false)
+          })
+          .catch(() => {
+            setLoading(false)
+          })
       } else {
         setLoading(false)
       }
     })
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -77,7 +100,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (data?.user) {
+      await fetchProfile(data.user.id)
+    }
     return { error }
   }
 
@@ -93,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
+    setProfile(null)
     return { error }
   }
 
