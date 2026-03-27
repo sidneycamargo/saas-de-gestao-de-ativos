@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
-import { useCompanyStore } from '@/stores/useCompanyStore'
+import useCompanyStore from '@/stores/useCompanyStore'
 
 const systemModules = [
   { id: 'dashboard', label: 'Dashboard' },
