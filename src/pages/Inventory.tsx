@@ -23,7 +23,7 @@ export default function Inventory() {
 
       <Tabs defaultValue="assets" className="w-full">
         <TabsList className="grid w-full sm:w-[600px] grid-cols-3">
-          <TabsTrigger value="assets">Ativos</TabsTrigger>
+          <TabsTrigger value="assets">Todos os Ativos</TabsTrigger>
           <TabsTrigger value="equipment">Equipamentos</TabsTrigger>
           <TabsTrigger value="parts">Peças</TabsTrigger>
         </TabsList>

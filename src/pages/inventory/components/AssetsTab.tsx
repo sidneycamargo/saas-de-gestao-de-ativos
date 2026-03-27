@@ -30,12 +30,24 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
 
+const translateType = (type: string | null) => {
+  const types: Record<string, string> = {
+    asset: 'Ativo Geral',
+    equipment: 'Equipamento',
+    part: 'Peça/Insumo',
+    vehicle: 'Veículo',
+    furniture: 'Móvel',
+  }
+  return type ? types[type] || 'Ativo Geral' : 'Ativo Geral'
+}
+
 export function AssetsTab() {
   const { activeCompanyId } = useCompanyStore()
   const [assets, setAssets] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -44,6 +56,7 @@ export function AssetsTab() {
     description: '',
     category_id: '',
     locator_id: '',
+    type: 'asset',
   })
 
   const fetchData = async () => {
@@ -53,7 +66,6 @@ export function AssetsTab() {
         .from('assets')
         .select('*, categories(name), locators(name)')
         .eq('company_id', activeCompanyId)
-        .in('type', ['asset', null])
         .order('created_at', { ascending: false }),
       supabase.from('categories').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('locators').select('*').eq('company_id', activeCompanyId).order('name'),
@@ -67,9 +79,12 @@ export function AssetsTab() {
     fetchData()
   }, [activeCompanyId])
 
-  const filteredAssets = assets.filter((a) =>
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredAssets = assets.filter((a) => {
+    const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType =
+      typeFilter === 'all' || a.type === typeFilter || (typeFilter === 'asset' && !a.type)
+    return matchesSearch && matchesType
+  })
 
   const handleEdit = (asset: any) => {
     setEditingId(asset.id)
@@ -78,6 +93,7 @@ export function AssetsTab() {
       description: asset.description || '',
       category_id: asset.category_id || '',
       locator_id: asset.locator_id || '',
+      type: asset.type || 'asset',
     })
     setIsOpen(true)
   }
@@ -102,6 +118,7 @@ export function AssetsTab() {
         description: formData.description,
         category_id: formData.category_id || null,
         locator_id: formData.locator_id || null,
+        type: formData.type,
       })
       .eq('id', editingId)
 
@@ -118,16 +135,30 @@ export function AssetsTab() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
           placeholder="Buscar ativos..."
-          className="w-full sm:max-w-md"
+          className="w-full sm:w-[250px]"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Tipos</SelectItem>
+            <SelectItem value="asset">Ativo Geral</SelectItem>
+            <SelectItem value="equipment">Equipamento</SelectItem>
+            <SelectItem value="part">Peça/Insumo</SelectItem>
+            <SelectItem value="vehicle">Veículo</SelectItem>
+            <SelectItem value="furniture">Móvel</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome do Ativo</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Local</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -138,6 +169,7 @@ export function AssetsTab() {
               filteredAssets.map((item) => (
                 <TableRow key={item.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{translateType(item.type)}</TableCell>
                   <TableCell>{item.categories?.name || '-'}</TableCell>
                   <TableCell>{item.locators?.name || '-'}</TableCell>
                   <TableCell className="text-right">
@@ -157,7 +189,7 @@ export function AssetsTab() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                   Nenhum ativo encontrado.
                 </TableCell>
               </TableRow>
@@ -180,10 +212,30 @@ export function AssetsTab() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(v) => setFormData({ ...formData, type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asset">Ativo Geral</SelectItem>
+                  <SelectItem value="equipment">Equipamento</SelectItem>
+                  <SelectItem value="part">Peça/Insumo</SelectItem>
+                  <SelectItem value="vehicle">Veículo</SelectItem>
+                  <SelectItem value="furniture">Móvel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Categoria</Label>
               <Select
                 value={formData.category_id}
-                onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, category_id: v === 'none' ? '' : v })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -202,7 +254,9 @@ export function AssetsTab() {
               <Label>Localização</Label>
               <Select
                 value={formData.locator_id}
-                onValueChange={(v) => setFormData({ ...formData, locator_id: v })}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, locator_id: v === 'none' ? '' : v })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
