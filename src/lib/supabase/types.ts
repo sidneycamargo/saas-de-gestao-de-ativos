@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.4'
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -16,7 +22,16 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          locator_id: string | null
+          min_stock: number | null
           name: string
+          patrimony: string | null
+          price: number | null
+          serial: string | null
+          sku: string | null
+          status: string | null
+          stock: number | null
+          type: string | null
           updated_at: string
         }
         Insert: {
@@ -25,7 +40,16 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          locator_id?: string | null
+          min_stock?: number | null
           name: string
+          patrimony?: string | null
+          price?: number | null
+          serial?: string | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          type?: string | null
           updated_at?: string
         }
         Update: {
@@ -34,23 +58,39 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          locator_id?: string | null
+          min_stock?: number | null
           name?: string
+          patrimony?: string | null
+          price?: number | null
+          serial?: string | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          type?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'assets_category_id_fkey'
-            columns: ['category_id']
+            foreignKeyName: "assets_category_id_fkey"
+            columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: 'categories'
-            referencedColumns: ['id']
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'assets_company_id_fkey'
-            columns: ['company_id']
+            foreignKeyName: "assets_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: 'companies'
-            referencedColumns: ['id']
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_locator_id_fkey"
+            columns: ["locator_id"]
+            isOneToOne: false
+            referencedRelation: "locators"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -78,11 +118,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'categories_company_id_fkey'
-            columns: ['company_id']
+            foreignKeyName: "categories_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: 'companies'
-            referencedColumns: ['id']
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -120,6 +160,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          group_id: string | null
           id: string
           role: string
           updated_at: string
@@ -128,6 +169,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          group_id?: string | null
           id?: string
           role: string
           updated_at?: string
@@ -136,6 +178,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           role?: string
           updated_at?: string
@@ -143,11 +186,196 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'company_memberships_company_id_fkey'
-            columns: ['company_id']
+            foreignKeyName: "company_memberships_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: false
-            referencedRelation: 'companies'
-            referencedColumns: ['id']
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          company_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          registration_date: string | null
+          renewal_after: boolean | null
+          renewal_within: boolean | null
+          start_date: string | null
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          registration_date?: string | null
+          renewal_after?: boolean | null
+          renewal_within?: boolean | null
+          start_date?: string | null
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          registration_date?: string | null
+          renewal_after?: boolean | null
+          renewal_within?: boolean | null
+          start_date?: string | null
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: Json | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locators: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locators_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenances: {
+        Row: {
+          asset_id: string | null
+          company_id: string
+          created_at: string
+          date: string | null
+          id: string
+          status: string | null
+          technician: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          company_id: string
+          created_at?: string
+          date?: string | null
+          id?: string
+          status?: string | null
+          technician?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          company_id?: string
+          created_at?: string
+          date?: string | null
+          id?: string
+          status?: string | null
+          technician?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenances_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -158,6 +386,9 @@ export type Database = {
           id: string
           is_super_admin: boolean
           name: string
+          phone: string | null
+          status: string | null
+          two_factor_enabled: boolean | null
           updated_at: string
         }
         Insert: {
@@ -166,6 +397,9 @@ export type Database = {
           id: string
           is_super_admin?: boolean
           name: string
+          phone?: string | null
+          status?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -174,6 +408,9 @@ export type Database = {
           id?: string
           is_super_admin?: boolean
           name?: string
+          phone?: string | null
+          status?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -205,11 +442,109 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'subscriptions_company_id_fkey'
-            columns: ['company_id']
+            foreignKeyName: "subscriptions_company_id_fkey"
+            columns: ["company_id"]
             isOneToOne: true
-            referencedRelation: 'companies'
-            referencedColumns: ['id']
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          company_id: string
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          company_id: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          company_id?: string
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranties: {
+        Row: {
+          asset_id: string | null
+          company_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          provider: string | null
+          start_date: string | null
+          status: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          company_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          provider?: string | null
+          start_date?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string | null
+          company_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          provider?: string | null
+          start_date?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -229,31 +564,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -262,23 +599,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -287,23 +624,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -312,36 +649,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -349,6 +686,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -368,6 +706,15 @@ export const Constants = {
 //   company_id: uuid (not null)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+//   sku: text (nullable)
+//   patrimony: text (nullable)
+//   locator_id: uuid (nullable)
+//   serial: text (nullable)
+//   status: text (nullable, default: 'Operacional'::text)
+//   stock: integer (nullable, default: 0)
+//   min_stock: integer (nullable, default: 0)
+//   price: numeric (nullable, default: 0)
+//   type: text (nullable, default: 'asset'::text)
 // Table: categories
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -389,6 +736,43 @@ export const Constants = {
 //   role: text (not null)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+//   group_id: uuid (nullable)
+// Table: contracts
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   supplier_id: uuid (not null)
+//   registration_date: date (nullable)
+//   start_date: date (nullable)
+//   end_date: date (nullable)
+//   renewal_within: boolean (nullable, default: false)
+//   renewal_after: boolean (nullable, default: false)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: groups
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   name: text (not null)
+//   description: text (nullable)
+//   permissions: jsonb (nullable, default: '{}'::jsonb)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: locators
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   name: text (not null)
+//   description: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: maintenances
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   asset_id: uuid (nullable)
+//   type: text (nullable)
+//   date: date (nullable)
+//   status: text (nullable, default: 'Pendente'::text)
+//   technician: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: profiles
 //   id: uuid (not null)
 //   name: text (not null)
@@ -396,6 +780,9 @@ export const Constants = {
 //   is_super_admin: boolean (not null, default: false)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+//   phone: text (nullable)
+//   two_factor_enabled: boolean (nullable, default: false)
+//   status: text (nullable, default: 'Ativo'::text)
 // Table: subscriptions
 //   id: uuid (not null, default: gen_random_uuid())
 //   company_id: uuid (not null)
@@ -403,11 +790,33 @@ export const Constants = {
 //   plan_name: text (nullable)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+// Table: suppliers
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   name: text (not null)
+//   contact_name: text (nullable)
+//   email: text (nullable)
+//   phone: text (nullable)
+//   whatsapp: text (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+// Table: warranties
+//   id: uuid (not null, default: gen_random_uuid())
+//   company_id: uuid (not null)
+//   asset_id: uuid (nullable)
+//   type: text (nullable)
+//   provider: text (nullable)
+//   start_date: date (nullable)
+//   end_date: date (nullable)
+//   status: text (nullable, default: 'Ativa'::text)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 
 // --- CONSTRAINTS ---
 // Table: assets
 //   FOREIGN KEY assets_category_id_fkey: FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 //   FOREIGN KEY assets_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   FOREIGN KEY assets_locator_id_fkey: FOREIGN KEY (locator_id) REFERENCES locators(id) ON DELETE SET NULL
 //   PRIMARY KEY assets_pkey: PRIMARY KEY (id)
 // Table: categories
 //   FOREIGN KEY categories_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
@@ -416,10 +825,25 @@ export const Constants = {
 //   PRIMARY KEY companies_pkey: PRIMARY KEY (id)
 // Table: company_memberships
 //   FOREIGN KEY company_memberships_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   FOREIGN KEY company_memberships_group_id_fkey: FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
 //   PRIMARY KEY company_memberships_pkey: PRIMARY KEY (id)
 //   CHECK company_memberships_role_check: CHECK ((role = ANY (ARRAY['Admin'::text, 'Member'::text])))
 //   UNIQUE company_memberships_user_id_company_id_key: UNIQUE (user_id, company_id)
 //   FOREIGN KEY company_memberships_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: contracts
+//   FOREIGN KEY contracts_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY contracts_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY contracts_supplier_id_fkey: FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+// Table: groups
+//   FOREIGN KEY groups_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY groups_pkey: PRIMARY KEY (id)
+// Table: locators
+//   FOREIGN KEY locators_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY locators_pkey: PRIMARY KEY (id)
+// Table: maintenances
+//   FOREIGN KEY maintenances_asset_id_fkey: FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+//   FOREIGN KEY maintenances_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY maintenances_pkey: PRIMARY KEY (id)
 // Table: profiles
 //   FOREIGN KEY profiles_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
@@ -428,6 +852,13 @@ export const Constants = {
 //   UNIQUE subscriptions_company_id_key: UNIQUE (company_id)
 //   PRIMARY KEY subscriptions_pkey: PRIMARY KEY (id)
 //   CHECK subscriptions_status_check: CHECK ((status = ANY (ARRAY['Active'::text, 'Inactive'::text, 'Suspended'::text, 'Trial'::text, 'Pending Payment'::text])))
+// Table: suppliers
+//   FOREIGN KEY suppliers_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY suppliers_pkey: PRIMARY KEY (id)
+// Table: warranties
+//   FOREIGN KEY warranties_asset_id_fkey: FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+//   FOREIGN KEY warranties_company_id_fkey: FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+//   PRIMARY KEY warranties_pkey: PRIMARY KEY (id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: assets
@@ -452,6 +883,22 @@ export const Constants = {
 //     USING: (EXISTS ( SELECT 1    FROM profiles   WHERE ((profiles.id = auth.uid()) AND (profiles.is_super_admin = true))))
 //   Policy "Users can view memberships of their companies" (SELECT, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM company_memberships my_cm   WHERE ((my_cm.company_id = company_memberships.company_id) AND (my_cm.user_id = auth.uid()))))
+// Table: contracts
+//   Policy "contracts_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = contracts.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = contracts.company_id) AND (company_memberships.user_id = auth.uid()))))
+// Table: groups
+//   Policy "groups_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = groups.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = groups.company_id) AND (company_memberships.user_id = auth.uid()))))
+// Table: locators
+//   Policy "locators_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = locators.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = locators.company_id) AND (company_memberships.user_id = auth.uid()))))
+// Table: maintenances
+//   Policy "maintenances_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = maintenances.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = maintenances.company_id) AND (company_memberships.user_id = auth.uid()))))
 // Table: profiles
 //   Policy "Super admins can do all on profiles" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM profiles profiles_1   WHERE ((profiles_1.id = auth.uid()) AND (profiles_1.is_super_admin = true))))
@@ -464,6 +911,14 @@ export const Constants = {
 //     USING: (EXISTS ( SELECT 1    FROM profiles   WHERE ((profiles.id = auth.uid()) AND (profiles.is_super_admin = true))))
 //   Policy "Users can view their company subscriptions" (SELECT, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = subscriptions.company_id) AND (company_memberships.user_id = auth.uid()))))
+// Table: suppliers
+//   Policy "suppliers_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = suppliers.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = suppliers.company_id) AND (company_memberships.user_id = auth.uid()))))
+// Table: warranties
+//   Policy "warranties_policy" (ALL, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = warranties.company_id) AND (company_memberships.user_id = auth.uid()))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM company_memberships   WHERE ((company_memberships.company_id = warranties.company_id) AND (company_memberships.user_id = auth.uid()))))
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION handle_new_user()
@@ -478,10 +933,11 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
 
 // --- INDEXES ---
 // Table: company_memberships
 //   CREATE UNIQUE INDEX company_memberships_user_id_company_id_key ON public.company_memberships USING btree (user_id, company_id)
 // Table: subscriptions
 //   CREATE UNIQUE INDEX subscriptions_company_id_key ON public.subscriptions USING btree (company_id)
+
