@@ -89,6 +89,7 @@ export default function Maintenance() {
     maintenances: [] as any[],
     equipments: [] as any[],
     suppliers: [] as any[],
+    warranties: [] as any[],
   })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external'>('quick')
@@ -109,7 +110,7 @@ export default function Maintenance() {
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [mRes, eRes, sRes] = await Promise.all([
+    const [mRes, eRes, sRes, wRes] = await Promise.all([
       supabase
         .from('maintenances')
         .select('*, assets(name)')
@@ -122,11 +123,17 @@ export default function Maintenance() {
         .eq('type', 'equipment')
         .order('name'),
       supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase
+        .from('warranties')
+        .select('*, warranty_suppliers(supplier_id)')
+        .eq('company_id', activeCompanyId)
+        .eq('status', 'Ativa'),
     ])
     setData({
       maintenances: mRes.data || [],
       equipments: eRes.data || [],
       suppliers: sRes.data || [],
+      warranties: wRes.data || [],
     })
   }
 
@@ -291,6 +298,10 @@ export default function Maintenance() {
     }
   }
 
+  const warrantySupplierIds = data.warranties
+    .filter((w) => w.asset_id === formData.equipmentId)
+    .flatMap((w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -433,7 +444,19 @@ export default function Maintenance() {
               <Label>Equipamento *</Label>
               <Select
                 value={formData.equipmentId}
-                onValueChange={(v) => setFormData({ ...formData, equipmentId: v })}
+                onValueChange={(v) => {
+                  let nextSupplierId = formData.supplierId
+                  if (callMode === 'external') {
+                    const activeWs = data.warranties.filter((w) => w.asset_id === v)
+                    const sids = activeWs.flatMap(
+                      (w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
+                    )
+                    if (sids.length > 0 && !sids.includes(nextSupplierId)) {
+                      nextSupplierId = sids[0]
+                    }
+                  }
+                  setFormData({ ...formData, equipmentId: v, supplierId: nextSupplierId })
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -527,13 +550,22 @@ export default function Maintenance() {
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {data.suppliers.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
+                        {data.suppliers.map((s) => {
+                          const isWarranty = warrantySupplierIds.includes(s.id)
+                          return (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name} {isWarranty ? '⭐ (Garantia)' : ''}
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
+                    {warrantySupplierIds.length > 0 && formData.equipmentId && (
+                      <p className="text-xs text-primary mt-1 flex items-center">
+                        <ShieldCheck className="w-3 h-3 mr-1" /> Este ativo possui garantia ativa.
+                        Fornecedores sugeridos estão marcados.
+                      </p>
+                    )}
                   </>
                 )}
 

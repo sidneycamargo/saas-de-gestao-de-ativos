@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
@@ -28,6 +30,7 @@ export default function Warranties() {
   const { activeCompanyId } = useCompanyStore()
   const [warranties, setWarranties] = useState<any[]>([])
   const [assets, setAssets] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -37,20 +40,23 @@ export default function Warranties() {
     provider: '',
     start_date: '',
     end_date: '',
+    supplier_ids: [] as string[],
   })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [wRes, aRes] = await Promise.all([
+    const [wRes, aRes, sRes] = await Promise.all([
       supabase
         .from('warranties')
-        .select('*, assets(name)')
+        .select('*, assets(name), warranty_suppliers(supplier_id, suppliers(name))')
         .eq('company_id', activeCompanyId)
         .order('end_date'),
       supabase.from('assets').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
     ])
     if (wRes.data) setWarranties(wRes.data)
     if (aRes.data) setAssets(aRes.data)
+    if (sRes.data) setSuppliers(sRes.data)
   }
 
   useEffect(() => {
@@ -69,31 +75,42 @@ export default function Warranties() {
       status: new Date(formData.end_date) < new Date() ? 'Expirada' : 'Ativa',
     }
 
-    if (formData.id) {
-      const { error } = await supabase
-        .from('warranties')
-        .update(payload)
-        .eq('id', formData.id)
-        .eq('company_id', activeCompanyId)
+    let warrantyId = formData.id
 
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Garantia atualizada' })
-        setIsOpen(false)
-        fetchData()
+    try {
+      if (warrantyId) {
+        const { error } = await supabase
+          .from('warranties')
+          .update(payload)
+          .eq('id', warrantyId)
+          .eq('company_id', activeCompanyId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('warranties')
+          .insert({ company_id: activeCompanyId, ...payload })
+          .select()
+          .single()
+        if (error) throw error
+        if (data) warrantyId = data.id
       }
-    } else {
-      const { error } = await supabase.from('warranties').insert({
-        company_id: activeCompanyId,
-        ...payload,
-      })
 
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Garantia registrada' })
-        setIsOpen(false)
-        fetchData()
+      if (warrantyId) {
+        await supabase.from('warranty_suppliers').delete().eq('warranty_id', warrantyId)
+        if (formData.supplier_ids.length > 0) {
+          const wsPayload = formData.supplier_ids.map((sid) => ({
+            warranty_id: warrantyId,
+            supplier_id: sid,
+          }))
+          await supabase.from('warranty_suppliers').insert(wsPayload)
+        }
       }
+
+      toast({ title: 'Garantia salva com sucesso' })
+      setIsOpen(false)
+      fetchData()
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     }
   }
 
@@ -105,6 +122,7 @@ export default function Warranties() {
       provider: w.provider || '',
       start_date: w.start_date ? w.start_date.split('T')[0] : '',
       end_date: w.end_date ? w.end_date.split('T')[0] : '',
+      supplier_ids: w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
     })
     setIsOpen(true)
   }
@@ -148,6 +166,7 @@ export default function Warranties() {
               provider: '',
               start_date: '',
               end_date: '',
+              supplier_ids: [],
             })
             setIsOpen(true)
           }}
@@ -161,6 +180,11 @@ export default function Warranties() {
           warranties.map((w) => {
             const isExpired = w.status === 'Expirada' || new Date(w.end_date) < new Date()
             const prog = calcProgress(w.start_date, w.end_date)
+            const supNames =
+              w.warranty_suppliers?.length > 0
+                ? w.warranty_suppliers.map((ws: any) => ws.suppliers?.name).join(', ')
+                : w.provider || 'Nenhum fornecedor'
+
             return (
               <Card
                 key={w.id}
@@ -196,7 +220,9 @@ export default function Warranties() {
                     )}
                   </div>
                   <CardTitle className="text-lg mt-2">{w.assets?.name}</CardTitle>
-                  <CardDescription>{w.provider}</CardDescription>
+                  <CardDescription className="line-clamp-1" title={supNames}>
+                    {supNames}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -235,7 +261,7 @@ export default function Warranties() {
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>{formData.id ? 'Editar Garantia' : 'Nova Garantia'}</DialogTitle>
           </DialogHeader>
@@ -258,27 +284,56 @@ export default function Warranties() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(v) => setFormData({ ...formData, type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Equipamento">Equipamento</SelectItem>
-                  <SelectItem value="Peça">Peça</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(v) => setFormData({ ...formData, type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Equipamento">Equipamento</SelectItem>
+                    <SelectItem value="Peça">Peça</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fabricante (Opcional)</Label>
+                <Input
+                  value={formData.provider}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                  placeholder="Nome do fabricante"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Fornecedor / Fabricante</Label>
-              <Input
-                value={formData.provider}
-                onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-              />
+              <Label>Empresas de Suporte da Garantia</Label>
+              <ScrollArea className="h-32 border rounded-md p-2 bg-muted/20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {suppliers.map((s) => (
+                    <div key={s.id} className="flex items-center space-x-2 py-1">
+                      <Checkbox
+                        id={`sup-${s.id}`}
+                        checked={formData.supplier_ids.includes(s.id)}
+                        onCheckedChange={(checked) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            supplier_ids: checked
+                              ? [...prev.supplier_ids, s.id]
+                              : prev.supplier_ids.filter((id) => id !== s.id),
+                          }))
+                        }}
+                      />
+                      <Label htmlFor={`sup-${s.id}`} className="text-sm font-normal truncate">
+                        {s.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
