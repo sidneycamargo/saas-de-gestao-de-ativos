@@ -40,8 +40,8 @@ import { useAuth } from '@/hooks/use-auth'
 
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Ativos', url: '/assets', icon: Box },
   { title: 'Inventário', url: '/inventory', icon: Package },
-  { title: 'Novo Ativo', url: '/assets/new', icon: Box },
   { title: 'Manutenção', url: '/maintenance', icon: Wrench },
   { title: 'Fornecedores', url: '/suppliers', icon: Truck },
   { title: 'Contratos', url: '/contracts', icon: FileText },

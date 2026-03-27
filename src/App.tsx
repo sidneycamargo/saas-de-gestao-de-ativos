@@ -13,6 +13,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
+import Assets from './pages/Assets'
 import AssetNew from './pages/AssetNew'
 import Maintenance from './pages/Maintenance'
 import Suppliers from './pages/Suppliers'
@@ -41,6 +42,7 @@ const App = () => (
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/assets" element={<Assets />} />
               <Route path="/assets/new" element={<AssetNew />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/suppliers" element={<Suppliers />} />

@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar as CalendarIcon, PhoneCall, AlertCircle, Wrench } from 'lucide-react'
+import {
+  Plus,
+  Calendar as CalendarIcon,
+  PhoneCall,
+  AlertCircle,
+  Wrench,
+  Edit2,
+  XCircle,
+  MoreVertical,
+  MailCheck,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -41,6 +51,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from '@/hooks/use-toast'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
 
 function PriorityBadge({ priority }: { priority: string }) {
   switch (priority) {
@@ -71,6 +82,9 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 export default function Maintenance() {
   const { activeCompanyId } = useCompanyStore()
+  const { session, profile } = useAuth()
+  const [userRole, setUserRole] = useState<string>('Member')
+
   const [data, setData] = useState({
     maintenances: [] as any[],
     equipments: [] as any[],
@@ -78,12 +92,14 @@ export default function Maintenance() {
   })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external'>('quick')
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     equipmentId: '',
     supplierId: '',
     type: 'Corretiva',
     date: new Date().toISOString().split('T')[0],
+    order_date: new Date().toISOString().split('T')[0],
     description: '',
     priority: 'Média',
     origin: 'Manual',
@@ -118,6 +134,21 @@ export default function Maintenance() {
     fetchData()
   }, [activeCompanyId])
 
+  useEffect(() => {
+    if (activeCompanyId && session?.user?.id) {
+      supabase
+        .from('company_memberships')
+        .select('role')
+        .eq('company_id', activeCompanyId)
+        .eq('user_id', session.user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setUserRole(data.role)
+        })
+    }
+  }, [activeCompanyId, session])
+
+  const canEditOrderDate = profile?.is_super_admin || userRole === 'Admin' || userRole === 'Manager'
   const selectedSupplier = data.suppliers.find((s) => s.id === formData.supplierId)
 
   const handleToggleChannel = (channel: string, checked: boolean) => {
@@ -130,21 +161,63 @@ export default function Maintenance() {
     })
   }
 
-  const openDialog = (mode: 'quick' | 'internal' | 'external') => {
+  const openDialog = (mode: 'quick' | 'internal' | 'external', m?: any) => {
     setCallMode(mode)
-    setFormData({
-      equipmentId: '',
-      supplierId: '',
-      type: 'Corretiva',
-      date: new Date().toISOString().split('T')[0],
-      description: '',
-      priority: 'Média',
-      origin:
-        mode === 'quick' ? 'Manual' : mode === 'internal' ? 'Planejamento' : 'Acionamento Externo',
-      channels: [],
-      primaryChannel: '',
-    })
+    if (m) {
+      setEditingId(m.id)
+      setFormData({
+        equipmentId: m.asset_id || '',
+        supplierId: '',
+        type: m.type || 'Corretiva',
+        date: m.date || new Date().toISOString().split('T')[0],
+        order_date: m.order_date || new Date().toISOString().split('T')[0],
+        description: m.description || '',
+        priority: m.priority || 'Média',
+        origin: m.origin || 'Manual',
+        channels: [],
+        primaryChannel: '',
+      })
+    } else {
+      setEditingId(null)
+      setFormData({
+        equipmentId: '',
+        supplierId: '',
+        type: 'Corretiva',
+        date: new Date().toISOString().split('T')[0],
+        order_date: new Date().toISOString().split('T')[0],
+        description: '',
+        priority: 'Média',
+        origin:
+          mode === 'quick'
+            ? 'Manual'
+            : mode === 'internal'
+              ? 'Planejamento'
+              : 'Acionamento Externo',
+        channels: [],
+        primaryChannel: '',
+      })
+    }
     setDialogOpen(true)
+  }
+
+  const handleEdit = (m: any) => {
+    if (m.type === 'Solicitação') openDialog('quick', m)
+    else if (m.type === 'Chamado Externo') openDialog('external', m)
+    else openDialog('internal', m)
+  }
+
+  const handleCancel = async (id: string) => {
+    if (confirm('Tem certeza que deseja cancelar este chamado?')) {
+      const { error } = await supabase
+        .from('maintenances')
+        .update({ status: 'Cancelado' })
+        .eq('id', id)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Chamado cancelado com sucesso!' })
+        fetchData()
+      }
+    }
   }
 
   const handleSave = async () => {
@@ -162,36 +235,59 @@ export default function Maintenance() {
       priority: formData.priority,
       origin: formData.origin,
       date: formData.date || new Date().toISOString().split('T')[0],
-      status: 'Pendente',
+      order_date: formData.order_date || new Date().toISOString().split('T')[0],
+    }
+
+    if (!editingId) {
+      payload.status = 'Pendente'
     }
 
     if (callMode === 'quick') {
       payload.type = 'Solicitação'
-      payload.technician = 'A Definir'
+      if (!editingId) payload.technician = 'A Definir'
     } else if (callMode === 'internal') {
       payload.type = formData.type
-      payload.technician = 'Interno'
+      if (!editingId) payload.technician = 'Interno'
     } else if (callMode === 'external') {
-      if (!formData.supplierId)
+      if (!formData.supplierId && !editingId)
         return toast({
           title: 'Atenção',
           description: 'Selecione um fornecedor.',
           variant: 'destructive',
         })
       payload.type = 'Chamado Externo'
-      payload.technician = selectedSupplier?.name || 'Externo'
+      if (!editingId) payload.technician = selectedSupplier?.name || 'Externo'
       if (formData.channels.length > 0) {
         payload.description =
           `${formData.description}\n\n[Contato via: ${formData.channels.join(', ')} | Principal: ${formData.primaryChannel}]`.trim()
+        if (formData.channels.includes('email')) {
+          payload.email_sent = true
+        }
       }
     }
 
-    const { error } = await supabase.from('maintenances').insert(payload)
-    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    else {
-      toast({ title: 'Registro criado com sucesso!' })
-      setDialogOpen(false)
-      fetchData()
+    if (editingId) {
+      const { error } = await supabase.from('maintenances').update(payload).eq('id', editingId)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Registro atualizado com sucesso!' })
+        setDialogOpen(false)
+        fetchData()
+      }
+    } else {
+      const { error } = await supabase.from('maintenances').insert(payload)
+      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      else {
+        toast({ title: 'Registro criado com sucesso!' })
+        if (payload.email_sent) {
+          toast({
+            title: 'E-mail enviado',
+            description: 'O fornecedor foi notificado por e-mail de forma sistêmica.',
+          })
+        }
+        setDialogOpen(false)
+        fetchData()
+      }
     }
   }
 
@@ -232,10 +328,11 @@ export default function Maintenance() {
               <TableRow>
                 <TableHead>Equipamento</TableHead>
                 <TableHead>Tipo / Origem</TableHead>
-                <TableHead>Data</TableHead>
+                <TableHead>Data Programada</TableHead>
                 <TableHead>Prioridade</TableHead>
                 <TableHead>Responsável</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -265,6 +362,12 @@ export default function Maintenance() {
                       {m.date
                         ? new Date(m.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
                         : '-'}
+                      {m.email_sent && (
+                        <MailCheck
+                          className="w-4 h-4 inline-block ml-2 text-success"
+                          title="E-mail Enviado"
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <PriorityBadge priority={m.priority || 'Média'} />
@@ -273,11 +376,31 @@ export default function Maintenance() {
                     <TableCell>
                       <StatusBadge status={m.status || 'Pendente'} />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(m)}>
+                            <Edit2 className="w-4 h-4 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleCancel(m.id)}
+                            className="text-danger"
+                          >
+                            <XCircle className="w-4 h-4 mr-2" /> Cancelar Chamado
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma manutenção registrada.
                   </TableCell>
                 </TableRow>
@@ -291,9 +414,9 @@ export default function Maintenance() {
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>
-              {callMode === 'quick' && 'Relato de Problema Rápido'}
-              {callMode === 'internal' && 'Nova Ordem de Serviço Interna'}
-              {callMode === 'external' && 'Acionar Fornecedor'}
+              {editingId ? 'Editar Registro' : callMode === 'quick' && 'Relato de Problema Rápido'}
+              {!editingId && callMode === 'internal' && 'Nova Ordem de Serviço Interna'}
+              {!editingId && callMode === 'external' && 'Acionar Fornecedor'}
             </DialogTitle>
             <DialogDescription>
               {callMode === 'quick' &&
@@ -374,29 +497,47 @@ export default function Maintenance() {
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Data do Pedido</Label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      className="pl-9"
+                      value={formData.order_date}
+                      onChange={(e) => setFormData({ ...formData, order_date: e.target.value })}
+                      disabled={!canEditOrderDate}
+                      title={!canEditOrderDate ? 'Apenas gerentes ou admins podem alterar.' : ''}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
             {callMode === 'external' && (
               <div className="space-y-2">
-                <Label>Fornecedor / Assistência *</Label>
-                <Select
-                  value={formData.supplierId}
-                  onValueChange={(v) => setFormData({ ...formData, supplierId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.suppliers.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!editingId && (
+                  <>
+                    <Label>Fornecedor / Assistência *</Label>
+                    <Select
+                      value={formData.supplierId}
+                      onValueChange={(v) => setFormData({ ...formData, supplierId: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.suppliers.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
 
-                {selectedSupplier && (
+                {selectedSupplier && !editingId && (
                   <div className="space-y-3 pt-2 mt-2 border-t">
                     <Label className="text-sm">Canais de Contato Utilizados</Label>
                     <div className="flex gap-4">
@@ -468,7 +609,9 @@ export default function Maintenance() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>Salvar Registro</Button>
+            <Button onClick={handleSave}>
+              {editingId ? 'Salvar Alterações' : 'Salvar Registro'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
