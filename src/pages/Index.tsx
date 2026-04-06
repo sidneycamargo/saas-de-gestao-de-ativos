@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Hexagon, Lock, Mail, Loader2 } from 'lucide-react'
+import { Hexagon, Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -34,6 +34,7 @@ export default function Index() {
   const { signIn, signInWithGoogle, session } = useAuth()
   const [email, setEmail] = useState('superadmin@example.com')
   const [password, setPassword] = useState('Admin123!')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
@@ -149,12 +150,20 @@ export default function Index() {
                     <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                     <Input
                       id="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pl-9 bg-slate-900 border-slate-700 text-white"
+                      className="pl-9 pr-10 bg-slate-900 border-slate-700 text-white"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 focus:outline-none"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
                 <Button
