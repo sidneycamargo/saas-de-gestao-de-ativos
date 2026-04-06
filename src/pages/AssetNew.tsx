@@ -13,14 +13,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Combobox } from '@/components/ui/combobox'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
@@ -30,15 +24,20 @@ export default function AssetNew() {
   const { activeCompanyId } = useCompanyStore()
   const [categories, setCategories] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
+  const [brands, setBrands] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     type: 'asset',
     name: '',
     description: '',
     category_id: '',
+    locator_id: '',
+    identifier: '',
+    status: 'Ativo',
+    brand_id: '',
+    model: '',
     sku: '',
     patrimony: '',
-    locator_id: '',
     serial: '',
     stock: 0,
     min_stock: 0,
@@ -59,8 +58,30 @@ export default function AssetNew() {
         .eq('company_id', activeCompanyId)
         .order('name')
         .then(({ data }) => setLocators(data || []))
+      supabase
+        .from('brands')
+        .select('*')
+        .eq('company_id', activeCompanyId)
+        .order('name')
+        .then(({ data }) => setBrands(data || []))
     }
   }, [activeCompanyId])
+
+  const handleCreateBrand = async (name: string) => {
+    if (!activeCompanyId) return
+    const { data, error } = await supabase
+      .from('brands')
+      .insert({ company_id: activeCompanyId, name })
+      .select()
+      .single()
+    if (data) {
+      setBrands((prev) => [...prev, data])
+      setFormData({ ...formData, brand_id: data.id })
+      toast({ title: 'Marca criada', description: `A marca ${name} foi adicionada.` })
+    } else if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,9 +93,13 @@ export default function AssetNew() {
       name: formData.name,
       description: formData.description,
       category_id: formData.category_id || null,
+      locator_id: formData.locator_id || null,
+      identifier: formData.identifier,
+      status: formData.status,
+      brand_id: formData.brand_id || null,
+      model: formData.model,
       sku: formData.sku,
       patrimony: formData.patrimony,
-      locator_id: formData.locator_id || null,
       serial: formData.serial,
       stock: formData.stock,
       min_stock: formData.min_stock,
@@ -147,41 +172,69 @@ export default function AssetNew() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="identifier">Identificador</Label>
+                <Input
+                  id="identifier"
+                  placeholder="Ex: Código de Barras / Patrimônio"
+                  value={formData.identifier}
+                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Situação</Label>
+                <Combobox
+                  options={[
+                    { label: 'Ativo', value: 'Ativo' },
+                    { label: 'Inativo', value: 'Inativo' },
+                    { label: 'Doado', value: 'Doado' },
+                  ]}
+                  value={formData.status}
+                  onChange={(v) => setFormData({ ...formData, status: v })}
+                  placeholder="Selecione a situação..."
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select
+                <Combobox
+                  options={categories.map((c) => ({ label: c.name, value: c.id }))}
                   value={formData.category_id}
-                  onValueChange={(v) => setFormData({ ...formData, category_id: v })}
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setFormData({ ...formData, category_id: v })}
+                  placeholder="Selecione a categoria..."
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="locator">Localização Física</Label>
-                <Select
+                <Combobox
+                  options={locators.map((l) => ({ label: l.name, value: l.id }))}
                   value={formData.locator_id}
-                  onValueChange={(v) => setFormData({ ...formData, locator_id: v })}
-                >
-                  <SelectTrigger id="locator">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locators.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setFormData({ ...formData, locator_id: v })}
+                  placeholder="Selecione o local..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="brand">Marca</Label>
+                <Combobox
+                  options={brands.map((b) => ({ label: b.name, value: b.id }))}
+                  value={formData.brand_id}
+                  onChange={(v) => setFormData({ ...formData, brand_id: v })}
+                  placeholder="Selecione a marca..."
+                  onCreate={handleCreateBrand}
+                  emptyText="Nenhuma marca encontrada."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="model">Modelo</Label>
+                <Input
+                  id="model"
+                  placeholder="Ex: Inspiron 15"
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                />
               </div>
 
               {(formData.type === 'equipment' || formData.type === 'part') && (

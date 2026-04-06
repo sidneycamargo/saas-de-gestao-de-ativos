@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Combobox } from '@/components/ui/combobox'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
@@ -46,6 +47,7 @@ export function AssetsTab() {
   const [assets, setAssets] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
+  const [brands, setBrands] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
 
@@ -57,22 +59,28 @@ export function AssetsTab() {
     category_id: '',
     locator_id: '',
     type: 'asset',
+    identifier: '',
+    status: 'Ativo',
+    brand_id: '',
+    model: '',
   })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [assetsRes, catsRes, locsRes] = await Promise.all([
+    const [assetsRes, catsRes, locsRes, brandsRes] = await Promise.all([
       supabase
         .from('assets')
-        .select('*, categories(name), locators(name)')
+        .select('*, categories(name), locators(name), brands(name)')
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
       supabase.from('categories').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('locators').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase.from('brands').select('*').eq('company_id', activeCompanyId).order('name'),
     ])
     if (assetsRes.data) setAssets(assetsRes.data)
     if (catsRes.data) setCategories(catsRes.data)
     if (locsRes.data) setLocators(locsRes.data)
+    if (brandsRes.data) setBrands(brandsRes.data)
   }
 
   useEffect(() => {
@@ -80,7 +88,9 @@ export function AssetsTab() {
   }, [activeCompanyId])
 
   const filteredAssets = assets.filter((a) => {
-    const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch =
+      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.identifier?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType =
       typeFilter === 'all' || a.type === typeFilter || (typeFilter === 'asset' && !a.type)
     return matchesSearch && matchesType
@@ -94,6 +104,10 @@ export function AssetsTab() {
       category_id: asset.category_id || '',
       locator_id: asset.locator_id || '',
       type: asset.type || 'asset',
+      identifier: asset.identifier || '',
+      status: asset.status || 'Ativo',
+      brand_id: asset.brand_id || '',
+      model: asset.model || '',
     })
     setIsOpen(true)
   }
@@ -119,6 +133,10 @@ export function AssetsTab() {
         category_id: formData.category_id || null,
         locator_id: formData.locator_id || null,
         type: formData.type,
+        identifier: formData.identifier,
+        status: formData.status,
+        brand_id: formData.brand_id || null,
+        model: formData.model,
       })
       .eq('id', editingId)
 
@@ -127,6 +145,22 @@ export function AssetsTab() {
       toast({ title: 'Ativo atualizado' })
       setIsOpen(false)
       fetchData()
+    }
+  }
+
+  const handleCreateBrand = async (name: string) => {
+    if (!activeCompanyId) return
+    const { data, error } = await supabase
+      .from('brands')
+      .insert({ company_id: activeCompanyId, name })
+      .select()
+      .single()
+    if (data) {
+      setBrands((prev) => [...prev, data])
+      setFormData({ ...formData, brand_id: data.id })
+      toast({ title: 'Marca criada', description: `A marca ${name} foi adicionada.` })
+    } else if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     }
   }
 
@@ -157,10 +191,11 @@ export function AssetsTab() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Identificador</TableHead>
               <TableHead>Nome do Ativo</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Situação</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Local</TableHead>
+              <TableHead>Marca</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -168,10 +203,11 @@ export function AssetsTab() {
             {filteredAssets.length > 0 ? (
               filteredAssets.map((item) => (
                 <TableRow key={item.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{translateType(item.type)}</TableCell>
+                  <TableCell className="font-medium">{item.identifier || '-'}</TableCell>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.status || '-'}</TableCell>
                   <TableCell>{item.categories?.name || '-'}</TableCell>
-                  <TableCell>{item.locators?.name || '-'}</TableCell>
+                  <TableCell>{item.brands?.name || '-'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
                       <Edit2 className="w-4 h-4" />
@@ -189,7 +225,7 @@ export function AssetsTab() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
                   Nenhum ativo encontrado.
                 </TableCell>
               </TableRow>
@@ -199,18 +235,41 @@ export function AssetsTab() {
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Ativo</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2 md:col-span-2">
               <Label>Nome do Ativo</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Identificador</Label>
+              <Input
+                value={formData.identifier}
+                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Situação</Label>
+              <Combobox
+                options={[
+                  { label: 'Ativo', value: 'Ativo' },
+                  { label: 'Inativo', value: 'Inativo' },
+                  { label: 'Doado', value: 'Doado' },
+                ]}
+                value={formData.status}
+                onChange={(v) => setFormData({ ...formData, status: v })}
+                placeholder="Selecione a situação..."
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select
@@ -229,49 +288,48 @@ export function AssetsTab() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label>Categoria</Label>
-              <Select
+              <Combobox
+                options={categories.map((c) => ({ label: c.name, value: c.id }))}
                 value={formData.category_id}
-                onValueChange={(v) =>
-                  setFormData({ ...formData, category_id: v === 'none' ? '' : v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem Categoria</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setFormData({ ...formData, category_id: v })}
+                placeholder="Selecione a categoria..."
+              />
             </div>
+
             <div className="space-y-2">
               <Label>Localização</Label>
-              <Select
+              <Combobox
+                options={locators.map((l) => ({ label: l.name, value: l.id }))}
                 value={formData.locator_id}
-                onValueChange={(v) =>
-                  setFormData({ ...formData, locator_id: v === 'none' ? '' : v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem Local</SelectItem>
-                  {locators.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setFormData({ ...formData, locator_id: v })}
+                placeholder="Selecione o local..."
+              />
             </div>
+
             <div className="space-y-2">
+              <Label>Marca</Label>
+              <Combobox
+                options={brands.map((b) => ({ label: b.name, value: b.id }))}
+                value={formData.brand_id}
+                onChange={(v) => setFormData({ ...formData, brand_id: v })}
+                placeholder="Selecione a marca..."
+                onCreate={handleCreateBrand}
+                emptyText="Nenhuma marca encontrada."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Modelo</Label>
+              <Input
+                value={formData.model}
+                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
               <Label>Descrição</Label>
               <Textarea
                 value={formData.description}
