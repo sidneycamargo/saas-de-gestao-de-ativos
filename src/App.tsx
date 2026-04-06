@@ -10,6 +10,7 @@ import { CompanyProvider } from './stores/useCompanyStore'
 import Index from './pages/Index'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
             </Route>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
