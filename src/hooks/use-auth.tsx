@@ -6,6 +6,7 @@ interface Profile {
   id: string
   name: string
   email: string
+  phone: string | null
   is_super_admin: boolean
 }
 
@@ -19,6 +20,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
   updatePassword: (password: string) => Promise<{ error: any }>
+  refreshProfile: () => Promise<void>
   loading: boolean
 }
 
@@ -139,6 +141,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error }
   }
 
+  const refreshProfile = async () => {
+    if (session?.user?.id) {
+      await fetchProfile(session.user.id)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -151,6 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signOut,
         resetPassword,
         updatePassword,
+        refreshProfile,
         loading,
       }}
     >

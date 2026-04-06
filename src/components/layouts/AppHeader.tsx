@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
+import { Link } from 'react-router-dom'
 
 export function AppHeader() {
   const { profile, session, signOut } = useAuth()
@@ -100,8 +101,21 @@ export function AppHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={signOut}>
+            <DropdownMenuItem asChild>
+              <Link to="/profile" className="w-full cursor-pointer">
+                Perfil
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/settings" className="w-full cursor-pointer">
+                Configurações
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onClick={signOut}
+            >
               Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
