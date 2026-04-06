@@ -82,6 +82,7 @@ export default function Assets() {
     const pName = a.products?.name || a.name || ''
     const matchesSearch =
       pName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.patrimony?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.serial?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -192,8 +193,9 @@ export default function Assets() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Descrição</TableHead>
                 <TableHead>Patrimônio</TableHead>
-                <TableHead>Produto</TableHead>
+                <TableHead>Produto Base</TableHead>
                 <TableHead>Nº Série</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead>Localização</TableHead>
@@ -206,9 +208,13 @@ export default function Assets() {
                   const pName = item.products?.name || item.name || '-'
                   return (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.patrimony || item.identifier || '-'}
+                      <TableCell
+                        className="font-medium max-w-[200px] truncate"
+                        title={item.description || '-'}
+                      >
+                        {item.description || '-'}
                       </TableCell>
+                      <TableCell>{item.patrimony || item.identifier || '-'}</TableCell>
                       <TableCell>{pName}</TableCell>
                       <TableCell>{item.serial || '-'}</TableCell>
                       <TableCell>{item.status || '-'}</TableCell>
@@ -231,7 +237,7 @@ export default function Assets() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhum ativo encontrado.
                   </TableCell>
                 </TableRow>
@@ -247,6 +253,15 @@ export default function Assets() {
             <DialogTitle>Editar Ativo Físico</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Descrição do Ativo</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Ex: Notebook Dell Inspiron 15, cor prata..."
+              />
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <Label>Produto Base *</Label>
               <Combobox
@@ -307,14 +322,6 @@ export default function Assets() {
                 value={formData.locator_id}
                 onChange={(v) => setFormData({ ...formData, locator_id: v })}
                 placeholder="Selecione o local..."
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label>Observações</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
           </div>

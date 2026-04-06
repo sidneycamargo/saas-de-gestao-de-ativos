@@ -110,6 +110,17 @@ export default function AssetNew() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="description">Descrição do Ativo</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Ex: Notebook Dell Inspiron 15, cor prata..."
+                  className="min-h-[80px]"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="product">Produto Base (Catálogo) *</Label>
                 <div className="flex gap-2">
                   <div className="flex-1">
@@ -183,17 +194,6 @@ export default function AssetNew() {
                   value={formData.locator_id}
                   onChange={(v) => setFormData({ ...formData, locator_id: v })}
                   placeholder="Selecione o local..."
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Observações Específicas do Ativo</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Estado de conservação, detalhes da unidade..."
-                  className="min-h-[80px]"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
             </div>
