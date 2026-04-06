@@ -55,6 +55,7 @@ export default function Products() {
 
   const defaultForm = {
     name: '',
+    specification: '',
     description: '',
     type: 'equipment',
     category_id: '',
@@ -100,6 +101,7 @@ export default function Products() {
     setEditingId(prod.id)
     setFormData({
       name: prod.name,
+      specification: prod.specification || '',
       description: prod.description || '',
       type: prod.type || 'equipment',
       category_id: prod.category_id || '',
@@ -139,6 +141,7 @@ export default function Products() {
     const payload = {
       company_id: activeCompanyId,
       name: formData.name,
+      specification: formData.specification,
       description: formData.description,
       type: formData.type,
       category_id: formData.category_id || null,
@@ -231,6 +234,7 @@ export default function Products() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Especificação</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Marca</TableHead>
@@ -244,6 +248,9 @@ export default function Products() {
                 filteredProducts.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={item.specification}>
+                      {item.specification || '-'}
+                    </TableCell>
                     <TableCell>{translateType(item.type)}</TableCell>
                     <TableCell>{item.categories?.name || '-'}</TableCell>
                     <TableCell>{item.brands?.name || '-'}</TableCell>
@@ -266,7 +273,7 @@ export default function Products() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhum produto encontrado.
                   </TableCell>
                 </TableRow>
@@ -288,6 +295,14 @@ export default function Products() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Especificação</Label>
+              <Input
+                value={formData.specification}
+                onChange={(e) => setFormData({ ...formData, specification: e.target.value })}
               />
             </div>
 
