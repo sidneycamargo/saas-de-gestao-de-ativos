@@ -45,6 +45,7 @@ export default function Assets() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
+    name: '',
     product_id: '',
     identifier: '',
     status: 'Ativo',
@@ -95,6 +96,7 @@ export default function Assets() {
   const handleEdit = (asset: any) => {
     setEditingId(asset.id)
     setFormData({
+      name: asset.name || '',
       product_id: asset.product_id || '',
       identifier: asset.identifier || '',
       status: asset.status || 'Ativo',
@@ -131,7 +133,7 @@ export default function Assets() {
         patrimony: formData.patrimony,
         serial: formData.serial,
         description: formData.description,
-        name: selectedProduct?.name || 'Ativo',
+        name: formData.name || selectedProduct?.name || 'Ativo',
       })
       .eq('id', editingId)
 
@@ -193,7 +195,7 @@ export default function Assets() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Ativo / Descrição</TableHead>
                 <TableHead>Patrimônio</TableHead>
                 <TableHead>Produto Base</TableHead>
                 <TableHead>Nº Série</TableHead>
@@ -208,11 +210,21 @@ export default function Assets() {
                   const pName = item.products?.name || item.name || '-'
                   return (
                     <TableRow key={item.id}>
-                      <TableCell
-                        className="font-medium max-w-[200px] truncate"
-                        title={item.description || '-'}
-                      >
-                        {item.description || '-'}
+                      <TableCell>
+                        <div
+                          className="font-medium max-w-[200px] truncate"
+                          title={item.name || '-'}
+                        >
+                          {item.name || '-'}
+                        </div>
+                        {item.description && (
+                          <div
+                            className="text-xs text-muted-foreground max-w-[200px] truncate mt-0.5"
+                            title={item.description}
+                          >
+                            {item.description}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>{item.patrimony || item.identifier || '-'}</TableCell>
                       <TableCell>{pName}</TableCell>
@@ -255,10 +267,19 @@ export default function Assets() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div className="space-y-2 md:col-span-2">
               <Label>Descrição do Ativo</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ex: Notebook Dell X1"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Descritivo do Ativo</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Ex: Notebook Dell Inspiron 15, cor prata..."
+                placeholder="Detalhes técnicos, observações de estado, cor..."
               />
             </div>
 

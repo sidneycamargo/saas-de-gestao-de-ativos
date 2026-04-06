@@ -25,6 +25,7 @@ export default function AssetNew() {
   const [locators, setLocators] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
+    name: '',
     product_id: '',
     identifier: '',
     status: 'Ativo',
@@ -70,7 +71,7 @@ export default function AssetNew() {
       patrimony: formData.patrimony,
       serial: formData.serial,
       description: formData.description,
-      name: selectedProduct?.name || 'Ativo', // Fallback for backwards compatibility
+      name: formData.name || selectedProduct?.name || 'Ativo',
     })
 
     if (error) {
@@ -110,10 +111,21 @@ export default function AssetNew() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Descrição do Ativo</Label>
+                <Label htmlFor="name">Descrição do Ativo</Label>
+                <Input
+                  id="name"
+                  placeholder="Ex: Notebook Dell X1"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="description">Descritivo do Ativo</Label>
                 <Textarea
                   id="description"
-                  placeholder="Ex: Notebook Dell Inspiron 15, cor prata..."
+                  placeholder="Detalhes técnicos, observações de estado, cor..."
                   className="min-h-[80px]"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
