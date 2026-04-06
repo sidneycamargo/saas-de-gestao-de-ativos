@@ -33,56 +33,45 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import useCompanyStore from '@/stores/useCompanyStore'
 
-const translateType = (type: string | null) => {
-  const types: Record<string, string> = {
-    asset: 'Ativo Geral',
-    equipment: 'Equipamento',
-    part: 'Peça/Insumo',
-    vehicle: 'Veículo',
-    furniture: 'Móvel',
-  }
-  return type ? types[type] || 'Ativo Geral' : 'Ativo Geral'
-}
-
 export default function Assets() {
   const { activeCompanyId } = useCompanyStore()
   const [assets, setAssets] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
-  const [brands, setBrands] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    category_id: '',
-    locator_id: '',
-    type: 'asset',
+    product_id: '',
     identifier: '',
     status: 'Ativo',
-    brand_id: '',
-    model: '',
+    locator_id: '',
+    patrimony: '',
+    serial: '',
+    description: '',
   })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [assetsRes, catsRes, locsRes, brandsRes] = await Promise.all([
+    const [assetsRes, prodsRes, locsRes] = await Promise.all([
       supabase
         .from('assets')
-        .select('*, categories(name), locators(name), brands(name)')
+        .select(`
+          *,
+          products(name, type, brands(name), categories(name)),
+          locators(name)
+        `)
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
-      supabase.from('categories').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase.from('products').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('locators').select('*').eq('company_id', activeCompanyId).order('name'),
-      supabase.from('brands').select('*').eq('company_id', activeCompanyId).order('name'),
     ])
     if (assetsRes.data) setAssets(assetsRes.data)
-    if (catsRes.data) setCategories(catsRes.data)
+    if (prodsRes.data) setProducts(prodsRes.data)
     if (locsRes.data) setLocators(locsRes.data)
-    if (brandsRes.data) setBrands(brandsRes.data)
   }
 
   useEffect(() => {
@@ -90,32 +79,34 @@ export default function Assets() {
   }, [activeCompanyId])
 
   const filteredAssets = assets.filter((a) => {
+    const pName = a.products?.name || a.name || ''
     const matchesSearch =
-      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.identifier?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType =
-      typeFilter === 'all' || a.type === typeFilter || (typeFilter === 'asset' && !a.type)
-    return matchesSearch && matchesType
+      pName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.patrimony?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.serial?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus = statusFilter === 'all' || a.status === statusFilter
+
+    return matchesSearch && matchesStatus
   })
 
   const handleEdit = (asset: any) => {
     setEditingId(asset.id)
     setFormData({
-      name: asset.name,
-      description: asset.description || '',
-      category_id: asset.category_id || '',
-      locator_id: asset.locator_id || '',
-      type: asset.type || 'asset',
+      product_id: asset.product_id || '',
       identifier: asset.identifier || '',
       status: asset.status || 'Ativo',
-      brand_id: asset.brand_id || '',
-      model: asset.model || '',
+      locator_id: asset.locator_id || '',
+      patrimony: asset.patrimony || '',
+      serial: asset.serial || '',
+      description: asset.description || '',
     })
     setIsOpen(true)
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este ativo?')) {
+    if (confirm('Tem certeza que deseja excluir este ativo físico?')) {
       const { error } = await supabase.from('assets').delete().eq('id', id)
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       else {
@@ -126,19 +117,20 @@ export default function Assets() {
   }
 
   const handleSave = async () => {
-    if (!formData.name) return
+    if (!formData.product_id) return
+    const selectedProduct = products.find((p) => p.id === formData.product_id)
+
     const { error } = await supabase
       .from('assets')
       .update({
-        name: formData.name,
-        description: formData.description,
-        category_id: formData.category_id || null,
-        locator_id: formData.locator_id || null,
-        type: formData.type,
+        product_id: formData.product_id,
         identifier: formData.identifier,
         status: formData.status,
-        brand_id: formData.brand_id || null,
-        model: formData.model,
+        locator_id: formData.locator_id || null,
+        patrimony: formData.patrimony,
+        serial: formData.serial,
+        description: formData.description,
+        name: selectedProduct?.name || 'Ativo',
       })
       .eq('id', editingId)
 
@@ -150,22 +142,6 @@ export default function Assets() {
     }
   }
 
-  const handleCreateBrand = async (name: string) => {
-    if (!activeCompanyId) return
-    const { data, error } = await supabase
-      .from('brands')
-      .insert({ company_id: activeCompanyId, name })
-      .select()
-      .single()
-    if (data) {
-      setBrands((prev) => [...prev, data])
-      setFormData({ ...formData, brand_id: data.id })
-      toast({ title: 'Marca criada', description: `A marca ${name} foi adicionada.` })
-    } else if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -174,8 +150,8 @@ export default function Assets() {
             <Box className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Ativos</h2>
-            <p className="text-muted-foreground">Gestão principal do seu patrimônio e ativos.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Ativos (Patrimônio)</h2>
+            <p className="text-muted-foreground">Gestão de instâncias físicas dos seus produtos.</p>
           </div>
         </div>
         <Button asChild className="w-full sm:w-auto">
@@ -188,25 +164,25 @@ export default function Assets() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle>Listagem de Ativos</CardTitle>
+            <CardTitle>Listagem de Ativos Físicos</CardTitle>
             <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
               <Input
-                placeholder="Buscar ativos..."
+                placeholder="Buscar patrimônio, série..."
                 className="w-full sm:w-[250px]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Tipo" />
+                  <SelectValue placeholder="Situação" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os Tipos</SelectItem>
-                  <SelectItem value="asset">Ativo Geral</SelectItem>
-                  <SelectItem value="equipment">Equipamento</SelectItem>
-                  <SelectItem value="part">Peça/Insumo</SelectItem>
-                  <SelectItem value="vehicle">Veículo</SelectItem>
-                  <SelectItem value="furniture">Móvel</SelectItem>
+                  <SelectItem value="all">Todas as Situações</SelectItem>
+                  <SelectItem value="Ativo">Ativo</SelectItem>
+                  <SelectItem value="Inativo">Inativo</SelectItem>
+                  <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
+                  <SelectItem value="Doado">Doado</SelectItem>
+                  <SelectItem value="Descartado">Descartado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -216,38 +192,43 @@ export default function Assets() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Identificador</TableHead>
-                <TableHead>Nome do Ativo</TableHead>
+                <TableHead>Patrimônio</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead>Nº Série</TableHead>
                 <TableHead>Situação</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Marca</TableHead>
+                <TableHead>Localização</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAssets.length > 0 ? (
-                filteredAssets.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.identifier || '-'}</TableCell>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>{item.status || '-'}</TableCell>
-                    <TableCell>{item.categories?.name || '-'}</TableCell>
-                    <TableCell>{item.brands?.name || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(item.id)}
-                        className="text-danger"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredAssets.map((item) => {
+                  const pName = item.products?.name || item.name || '-'
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">
+                        {item.patrimony || item.identifier || '-'}
+                      </TableCell>
+                      <TableCell>{pName}</TableCell>
+                      <TableCell>{item.serial || '-'}</TableCell>
+                      <TableCell>{item.status || '-'}</TableCell>
+                      <TableCell>{item.locators?.name || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                          className="text-danger"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
@@ -263,14 +244,19 @@ export default function Assets() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Ativo</DialogTitle>
+            <DialogTitle>Editar Ativo Físico</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div className="space-y-2 md:col-span-2">
-              <Label>Nome do Ativo</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              <Label>Produto Base *</Label>
+              <Combobox
+                options={products.map((p) => ({
+                  label: `${p.name} ${p.model ? `(${p.model})` : ''}`,
+                  value: p.id,
+                }))}
+                value={formData.product_id}
+                onChange={(v) => setFormData({ ...formData, product_id: v })}
+                placeholder="Selecione o produto base..."
               />
             </div>
 
@@ -283,12 +269,30 @@ export default function Assets() {
             </div>
 
             <div className="space-y-2">
+              <Label>Número de Patrimônio</Label>
+              <Input
+                value={formData.patrimony}
+                onChange={(e) => setFormData({ ...formData, patrimony: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nº de Série</Label>
+              <Input
+                value={formData.serial}
+                onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Situação</Label>
               <Combobox
                 options={[
                   { label: 'Ativo', value: 'Ativo' },
                   { label: 'Inativo', value: 'Inativo' },
+                  { label: 'Em Manutenção', value: 'Em Manutenção' },
                   { label: 'Doado', value: 'Doado' },
+                  { label: 'Descartado', value: 'Descartado' },
                 ]}
                 value={formData.status}
                 onChange={(v) => setFormData({ ...formData, status: v })}
@@ -296,37 +300,8 @@ export default function Assets() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(v) => setFormData({ ...formData, type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="asset">Ativo Geral</SelectItem>
-                  <SelectItem value="equipment">Equipamento</SelectItem>
-                  <SelectItem value="part">Peça/Insumo</SelectItem>
-                  <SelectItem value="vehicle">Veículo</SelectItem>
-                  <SelectItem value="furniture">Móvel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Combobox
-                options={categories.map((c) => ({ label: c.name, value: c.id }))}
-                value={formData.category_id}
-                onChange={(v) => setFormData({ ...formData, category_id: v })}
-                placeholder="Selecione a categoria..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Localização</Label>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Localização Física</Label>
               <Combobox
                 options={locators.map((l) => ({ label: l.name, value: l.id }))}
                 value={formData.locator_id}
@@ -335,28 +310,8 @@ export default function Assets() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Marca</Label>
-              <Combobox
-                options={brands.map((b) => ({ label: b.name, value: b.id }))}
-                value={formData.brand_id}
-                onChange={(v) => setFormData({ ...formData, brand_id: v })}
-                placeholder="Selecione a marca..."
-                onCreate={handleCreateBrand}
-                emptyText="Nenhuma marca encontrada."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Modelo</Label>
-              <Input
-                value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-              />
-            </div>
-
             <div className="space-y-2 md:col-span-2">
-              <Label>Descrição</Label>
+              <Label>Observações</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -367,7 +322,7 @@ export default function Assets() {
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={!formData.name}>
+            <Button onClick={handleSave} disabled={!formData.product_id}>
               Salvar
             </Button>
           </DialogFooter>

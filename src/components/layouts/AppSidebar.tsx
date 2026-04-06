@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
+  PackageSearch,
   Package,
   Wrench,
   ShieldCheck,
@@ -41,6 +42,7 @@ import { useAuth } from '@/hooks/use-auth'
 
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Produtos', url: '/products', icon: PackageSearch },
   { title: 'Ativos', url: '/assets', icon: Box },
   { title: 'Marcas', url: '/brands', icon: Tag },
   { title: 'Inventário', url: '/inventory', icon: Package },

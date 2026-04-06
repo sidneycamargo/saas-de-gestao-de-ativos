@@ -13,7 +13,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Combobox } from '@/components/ui/combobox'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -22,108 +21,80 @@ import useCompanyStore from '@/stores/useCompanyStore'
 export default function AssetNew() {
   const navigate = useNavigate()
   const { activeCompanyId } = useCompanyStore()
-  const [categories, setCategories] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
-  const [brands, setBrands] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
-    type: 'asset',
-    name: '',
-    description: '',
-    category_id: '',
-    locator_id: '',
+    product_id: '',
     identifier: '',
     status: 'Ativo',
-    brand_id: '',
-    model: '',
-    sku: '',
+    locator_id: '',
     patrimony: '',
     serial: '',
-    stock: 0,
-    min_stock: 0,
-    price: 0,
+    description: '',
   })
 
   useEffect(() => {
     if (activeCompanyId) {
       supabase
-        .from('categories')
+        .from('products')
         .select('*')
         .eq('company_id', activeCompanyId)
         .order('name')
-        .then(({ data }) => setCategories(data || []))
+        .then(({ data }) => setProducts(data || []))
+
       supabase
         .from('locators')
         .select('*')
         .eq('company_id', activeCompanyId)
         .order('name')
         .then(({ data }) => setLocators(data || []))
-      supabase
-        .from('brands')
-        .select('*')
-        .eq('company_id', activeCompanyId)
-        .order('name')
-        .then(({ data }) => setBrands(data || []))
     }
   }, [activeCompanyId])
 
-  const handleCreateBrand = async (name: string) => {
-    if (!activeCompanyId) return
-    const { data, error } = await supabase
-      .from('brands')
-      .insert({ company_id: activeCompanyId, name })
-      .select()
-      .single()
-    if (data) {
-      setBrands((prev) => [...prev, data])
-      setFormData({ ...formData, brand_id: data.id })
-      toast({ title: 'Marca criada', description: `A marca ${name} foi adicionada.` })
-    } else if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name) return
+    if (!formData.product_id) {
+      toast({ title: 'Atenção', description: 'Selecione um produto base.', variant: 'destructive' })
+      return
+    }
+
+    const selectedProduct = products.find((p) => p.id === formData.product_id)
 
     const { error } = await supabase.from('assets').insert({
       company_id: activeCompanyId,
-      type: formData.type,
-      name: formData.name,
-      description: formData.description,
-      category_id: formData.category_id || null,
-      locator_id: formData.locator_id || null,
+      product_id: formData.product_id,
       identifier: formData.identifier,
       status: formData.status,
-      brand_id: formData.brand_id || null,
-      model: formData.model,
-      sku: formData.sku,
+      locator_id: formData.locator_id || null,
       patrimony: formData.patrimony,
       serial: formData.serial,
-      stock: formData.stock,
-      min_stock: formData.min_stock,
-      price: formData.price,
+      description: formData.description,
+      name: selectedProduct?.name || 'Ativo', // Fallback for backwards compatibility
     })
 
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' })
     } else {
-      toast({ title: 'Ativo Cadastrado', description: 'O registro foi salvo com sucesso.' })
-      navigate('/inventory')
+      toast({
+        title: 'Ativo Cadastrado',
+        description: 'O registro patrimonial foi salvo com sucesso.',
+      })
+      navigate('/assets')
     }
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => navigate('/inventory')}>
+        <Button variant="outline" size="icon" onClick={() => navigate('/assets')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Novo Registro</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Novo Ativo / Patrimônio</h2>
           <p className="text-muted-foreground">
-            Cadastre um novo ativo, equipamento ou peça no sistema.
+            Cadastre uma instância física (equipamento, veículo, móvel) associada a um Produto do
+            catálogo.
           </p>
         </div>
       </div>
@@ -131,53 +102,61 @@ export default function AssetNew() {
       <form onSubmit={handleSubmit}>
         <Card className="animate-fade-in-up">
           <CardHeader>
-            <CardTitle>Informações Principais</CardTitle>
+            <CardTitle>Informações do Ativo</CardTitle>
             <CardDescription>
-              Preencha os detalhes essenciais para controle e gerenciamento.
+              Preencha os detalhes específicos desta unidade física.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3 pb-4 border-b">
-              <Label className="text-base">Tipo de Registro</Label>
-              <RadioGroup
-                value={formData.type}
-                onValueChange={(v) => setFormData({ ...formData, type: v })}
-                className="flex gap-6"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="asset" id="t-asset" />
-                  <Label htmlFor="t-asset">Ativo Geral</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="equipment" id="t-eq" />
-                  <Label htmlFor="t-eq">Equipamento</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="part" id="t-part" />
-                  <Label htmlFor="t-part">Peça / Insumo</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="name">Nome / Título</Label>
+                <Label htmlFor="product">Produto Base (Catálogo) *</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Combobox
+                      options={products.map((p) => ({
+                        label: `${p.name} ${p.model ? `(${p.model})` : ''}`,
+                        value: p.id,
+                      }))}
+                      value={formData.product_id}
+                      onChange={(v) => setFormData({ ...formData, product_id: v })}
+                      placeholder="Selecione o produto base..."
+                      emptyText="Nenhum produto encontrado. Cadastre em Produtos."
+                    />
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => navigate('/products')}>
+                    Catálogo
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="identifier">Identificador (Tag / Etiqueta)</Label>
                 <Input
-                  id="name"
-                  required
-                  placeholder="Ex: Mesa de Escritório"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  id="identifier"
+                  placeholder="Ex: Código de Barras"
+                  value={formData.identifier}
+                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="identifier">Identificador</Label>
+                <Label htmlFor="patrimony">Número de Patrimônio</Label>
                 <Input
-                  id="identifier"
-                  placeholder="Ex: Código de Barras / Patrimônio"
-                  value={formData.identifier}
-                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                  id="patrimony"
+                  placeholder="Ex: PAT-2024-001"
+                  value={formData.patrimony}
+                  onChange={(e) => setFormData({ ...formData, patrimony: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serial">Nº de Série</Label>
+                <Input
+                  id="serial"
+                  placeholder="Ex: SN123456789"
+                  value={formData.serial}
+                  onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
                 />
               </div>
 
@@ -187,7 +166,9 @@ export default function AssetNew() {
                   options={[
                     { label: 'Ativo', value: 'Ativo' },
                     { label: 'Inativo', value: 'Inativo' },
+                    { label: 'Em Manutenção', value: 'Em Manutenção' },
                     { label: 'Doado', value: 'Doado' },
+                    { label: 'Descartado', value: 'Descartado' },
                   ]}
                   value={formData.status}
                   onChange={(v) => setFormData({ ...formData, status: v })}
@@ -195,17 +176,7 @@ export default function AssetNew() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
-                <Combobox
-                  options={categories.map((c) => ({ label: c.name, value: c.id }))}
-                  value={formData.category_id}
-                  onChange={(v) => setFormData({ ...formData, category_id: v })}
-                  placeholder="Selecione a categoria..."
-                />
-              </div>
-
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="locator">Localização Física</Label>
                 <Combobox
                   options={locators.map((l) => ({ label: l.name, value: l.id }))}
@@ -215,104 +186,11 @@ export default function AssetNew() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="brand">Marca</Label>
-                <Combobox
-                  options={brands.map((b) => ({ label: b.name, value: b.id }))}
-                  value={formData.brand_id}
-                  onChange={(v) => setFormData({ ...formData, brand_id: v })}
-                  placeholder="Selecione a marca..."
-                  onCreate={handleCreateBrand}
-                  emptyText="Nenhuma marca encontrada."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="model">Modelo</Label>
-                <Input
-                  id="model"
-                  placeholder="Ex: Inspiron 15"
-                  value={formData.model}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                />
-              </div>
-
-              {(formData.type === 'equipment' || formData.type === 'part') && (
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU / Referência</Label>
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {formData.type === 'equipment' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="patrimony">Tombamento / Patrimônio</Label>
-                    <Input
-                      id="patrimony"
-                      value={formData.patrimony}
-                      onChange={(e) => setFormData({ ...formData, patrimony: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="serial">Nº de Série</Label>
-                    <Input
-                      id="serial"
-                      value={formData.serial}
-                      onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
-                    />
-                  </div>
-                </>
-              )}
-
-              {formData.type === 'part' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Estoque Atual</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) =>
-                        setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="min_stock">Estoque Mínimo</Label>
-                    <Input
-                      id="min_stock"
-                      type="number"
-                      value={formData.min_stock}
-                      onChange={(e) =>
-                        setFormData({ ...formData, min_stock: parseInt(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Valor Unitário</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description">Descrição</Label>
+                <Label htmlFor="description">Observações Específicas do Ativo</Label>
                 <Textarea
                   id="description"
-                  placeholder="Detalhes adicionais, especificações técnicas..."
+                  placeholder="Estado de conservação, detalhes da unidade..."
                   className="min-h-[80px]"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -321,11 +199,11 @@ export default function AssetNew() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-3 border-t px-6 py-4">
-            <Button variant="outline" type="button" onClick={() => navigate('/inventory')}>
+            <Button variant="outline" type="button" onClick={() => navigate('/assets')}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!formData.name}>
-              <Save className="w-4 h-4 mr-2" /> Salvar Registro
+            <Button type="submit" disabled={!formData.product_id}>
+              <Save className="w-4 h-4 mr-2" /> Salvar Ativo
             </Button>
           </CardFooter>
         </Card>

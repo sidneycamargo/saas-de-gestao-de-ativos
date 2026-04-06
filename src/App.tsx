@@ -13,6 +13,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 import Dashboard from './pages/Dashboard'
+import Products from './pages/Products'
 import Inventory from './pages/Inventory'
 import Assets from './pages/Assets'
 import AssetNew from './pages/AssetNew'
@@ -45,6 +46,7 @@ const App = () => (
             </Route>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/products" element={<Products />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/assets" element={<Assets />} />
               <Route path="/assets/new" element={<AssetNew />} />
