@@ -15,6 +15,7 @@ import {
   Building,
   CreditCard,
   Users,
+  Tag,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -41,6 +42,7 @@ import { useAuth } from '@/hooks/use-auth'
 const items = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Ativos', url: '/assets', icon: Box },
+  { title: 'Marcas', url: '/brands', icon: Tag },
   { title: 'Inventário', url: '/inventory', icon: Package },
   { title: 'Manutenção', url: '/maintenance', icon: Wrench },
   { title: 'Fornecedores', url: '/suppliers', icon: Truck },

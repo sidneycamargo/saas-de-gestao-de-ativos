@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import Assets from './pages/Assets'
 import AssetNew from './pages/AssetNew'
+import Brands from './pages/Brands'
 import Maintenance from './pages/Maintenance'
 import Suppliers from './pages/Suppliers'
 import Contracts from './pages/Contracts'
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/assets" element={<Assets />} />
               <Route path="/assets/new" element={<AssetNew />} />
+              <Route path="/brands" element={<Brands />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/contracts" element={<Contracts />} />
