@@ -1,16 +1,35 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Hexagon, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Hexagon, Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function ForgotPassword() {
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { resetPassword } = useAuth()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+
+    const { error: resetError } = await resetPassword(email)
+
+    setIsLoading(false)
+
+    if (resetError) {
+      setError(resetError.message)
+      return
+    }
+
     setIsSubmitted(true)
   }
 
@@ -56,6 +75,16 @@ export default function ForgotPassword() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <Alert
+                    variant="destructive"
+                    className="bg-red-950/50 border-red-900 text-red-200"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Corporativo</Label>
                   <div className="relative">
@@ -65,13 +94,20 @@ export default function ForgotPassword() {
                       type="email"
                       placeholder="nome@empresa.com"
                       required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="pl-9 bg-slate-900 border-slate-700 text-white"
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2">
-                  Enviar Link de Recuperação
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Enviando...' : 'Enviar Link de Recuperação'}
                 </Button>
 
                 <div className="mt-6 text-center text-sm">
