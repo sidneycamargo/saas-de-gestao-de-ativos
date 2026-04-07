@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, PackageSearch } from 'lucide-react'
+import { Plus, Edit2, Trash2, PackageSearch, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,6 +49,9 @@ export default function Products() {
   const [brands, setBrands] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -111,6 +114,48 @@ export default function Products() {
 
     return matchesSearch && matchesType
   })
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (!sortConfig) return 0
+
+    const getNestedValue = (obj: any, path: string) => {
+      return path.split('.').reduce((acc, part) => acc && acc[part], obj)
+    }
+
+    let aValue = getNestedValue(a, sortConfig.key)
+    let bValue = getNestedValue(b, sortConfig.key)
+
+    if (sortConfig.key === 'type') {
+      aValue = translateType(a.type)
+      bValue = translateType(b.type)
+    }
+
+    if (aValue === null || aValue === undefined) aValue = ''
+    if (bValue === null || bValue === undefined) bValue = ''
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const cmp = aValue.localeCompare(bValue)
+      return sortConfig.direction === 'asc' ? cmp : -cmp
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  const getSortIcon = (key: string) => {
+    if (sortConfig?.key !== key) return <ArrowUpDown className="ml-2 h-4 w-4" />
+    if (sortConfig.direction === 'asc') return <ArrowUp className="ml-2 h-4 w-4" />
+    return <ArrowDown className="ml-2 h-4 w-4" />
+  }
 
   const handleEdit = (prod: any) => {
     setEditingId(prod.id)
@@ -248,19 +293,58 @@ export default function Products() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Especificação</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Marca</TableHead>
-                <TableHead>Modelo</TableHead>
-                <TableHead>Estoque</TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center">Nome {getSortIcon('name')}</div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('specification')}
+                >
+                  <div className="flex items-center">
+                    Especificação {getSortIcon('specification')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('type')}
+                >
+                  <div className="flex items-center">Tipo {getSortIcon('type')}</div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('categories.name')}
+                >
+                  <div className="flex items-center">
+                    Categoria {getSortIcon('categories.name')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('brands.name')}
+                >
+                  <div className="flex items-center">Marca {getSortIcon('brands.name')}</div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('model')}
+                >
+                  <div className="flex items-center">Modelo {getSortIcon('model')}</div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('stock')}
+                >
+                  <div className="flex items-center">Estoque {getSortIcon('stock')}</div>
+                </TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((item) => (
+              {sortedProducts.length > 0 ? (
+                sortedProducts.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={item.specification}>
