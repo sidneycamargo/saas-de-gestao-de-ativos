@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Edit2, Trash2, Box, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Edit2, Trash2, Box, ArrowUpDown, ArrowUp, ArrowDown, History } from 'lucide-react'
+import { AssetEvents } from '@/components/assets/AssetEvents'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,6 +47,7 @@ export default function Assets() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedAssetForEvents, setSelectedAssetForEvents] = useState<any>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -328,7 +330,20 @@ export default function Assets() {
                       <TableCell>{item.status || '-'}</TableCell>
                       <TableCell>{item.locators?.name || '-'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedAssetForEvents(item)}
+                          title="Histórico e Eventos"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(item)}
+                          title="Editar"
+                        >
                           <Edit2 className="w-4 h-4" />
                         </Button>
                         <Button
@@ -336,6 +351,7 @@ export default function Assets() {
                           size="icon"
                           onClick={() => handleDelete(item.id)}
                           className="text-danger"
+                          title="Excluir"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -452,6 +468,14 @@ export default function Assets() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AssetEvents
+        asset={selectedAssetForEvents}
+        isOpen={!!selectedAssetForEvents}
+        onClose={() => setSelectedAssetForEvents(null)}
+        onEventAdded={fetchData}
+        locators={locators}
+      />
     </div>
   )
 }
