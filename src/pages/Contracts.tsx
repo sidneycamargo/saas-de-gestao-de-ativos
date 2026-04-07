@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, Box } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +41,8 @@ export default function Contracts() {
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
+    identifier: '',
+    description: '',
     supplier_id: '',
     registration_date: '',
     start_date: '',
@@ -53,7 +56,7 @@ export default function Contracts() {
     const [cRes, sRes] = await Promise.all([
       supabase
         .from('contracts')
-        .select('*, suppliers(name)')
+        .select('*, suppliers(name), assets(id)')
         .eq('company_id', activeCompanyId)
         .order('registration_date', { ascending: false }),
       supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
@@ -70,16 +73,20 @@ export default function Contracts() {
     if (con) {
       setEditingId(con.id)
       setFormData({
+        identifier: con.identifier || '',
+        description: con.description || '',
         supplier_id: con.supplier_id,
-        registration_date: con.registration_date,
-        start_date: con.start_date,
-        end_date: con.end_date,
+        registration_date: con.registration_date || '',
+        start_date: con.start_date || '',
+        end_date: con.end_date || '',
         renewal_within: con.renewal_within,
         renewal_after: con.renewal_after,
       })
     } else {
       setEditingId(null)
       setFormData({
+        identifier: '',
+        description: '',
         supplier_id: '',
         registration_date: new Date().toISOString().split('T')[0],
         start_date: '',
@@ -115,7 +122,7 @@ export default function Contracts() {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Deseja remover este contrato?')) {
+    if (confirm('Deseja remover este contrato? Os ativos vinculados perderão esta associação.')) {
       const { error } = await supabase.from('contracts').delete().eq('id', id)
       if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       else {
@@ -142,9 +149,9 @@ export default function Contracts() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Registro</TableHead>
+                <TableHead>Identificador / Fornecedor</TableHead>
                 <TableHead>Vigência</TableHead>
+                <TableHead>Ativos Vinculados</TableHead>
                 <TableHead>Renovação</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -152,13 +159,9 @@ export default function Contracts() {
             <TableBody>
               {contracts.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.suppliers?.name}</TableCell>
                   <TableCell>
-                    {c.registration_date
-                      ? new Date(c.registration_date).toLocaleDateString('pt-BR', {
-                          timeZone: 'UTC',
-                        })
-                      : '-'}
+                    <div className="font-medium">{c.identifier || 'Sem identificador'}</div>
+                    <div className="text-sm text-muted-foreground">{c.suppliers?.name}</div>
                   </TableCell>
                   <TableCell>
                     {c.start_date
@@ -168,6 +171,17 @@ export default function Contracts() {
                     {c.end_date
                       ? new Date(c.end_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
                       : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        title={`${c.assets?.length || 0} ativo(s) vinculado(s)`}
+                      >
+                        <Box className="w-3 h-3 mr-1" />
+                        {c.assets?.length || 0}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="space-y-1">
                     {c.renewal_within && (
@@ -212,11 +226,19 @@ export default function Contracts() {
       </Card>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar Contrato' : 'Novo Contrato'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 grid-cols-1 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Identificador do Contrato</Label>
+              <Input
+                placeholder="Ex: CT-2023/001"
+                value={formData.identifier}
+                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Fornecedor</Label>
               <Select
@@ -235,33 +257,43 @@ export default function Contracts() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Data de Registro</Label>
-                <Input
-                  type="date"
-                  value={formData.registration_date}
-                  onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Data Início</Label>
-                <Input
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Data Final</Label>
-                <Input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                />
-              </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Descrição / Objeto do Contrato</Label>
+              <Textarea
+                placeholder="Detalhes sobre o que este contrato cobre..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
             </div>
-            <div className="space-y-3 mt-2 border-t pt-4">
+
+            <div className="space-y-2">
+              <Label>Data de Registro</Label>
+              <Input
+                type="date"
+                value={formData.registration_date}
+                onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data Início da Vigência</Label>
+              <Input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Data Final da Vigência</Label>
+              <Input
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-3 mt-2 md:col-span-2 border-t pt-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="ren-in"

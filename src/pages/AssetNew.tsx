@@ -23,6 +23,7 @@ export default function AssetNew() {
   const { activeCompanyId } = useCompanyStore()
   const [products, setProducts] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
+  const [contracts, setContracts] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     name: '',
@@ -30,6 +31,7 @@ export default function AssetNew() {
     identifier: '',
     status: 'Ativo',
     locator_id: '',
+    contract_id: '',
     patrimony: '',
     serial: '',
     description: '',
@@ -50,6 +52,13 @@ export default function AssetNew() {
         .eq('company_id', activeCompanyId)
         .order('name')
         .then(({ data }) => setLocators(data || []))
+
+      supabase
+        .from('contracts')
+        .select('*, suppliers(name)')
+        .eq('company_id', activeCompanyId)
+        .order('identifier')
+        .then(({ data }) => setContracts(data || []))
     }
   }, [activeCompanyId])
 
@@ -68,6 +77,7 @@ export default function AssetNew() {
       identifier: formData.identifier,
       status: formData.status,
       locator_id: formData.locator_id || null,
+      contract_id: formData.contract_id || null,
       patrimony: formData.patrimony,
       serial: formData.serial,
       description: formData.description,
@@ -207,6 +217,24 @@ export default function AssetNew() {
                   onChange={(v) => setFormData({ ...formData, locator_id: v })}
                   placeholder="Selecione o local..."
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-2 border-t pt-4">
+                <Label htmlFor="contract">Contrato Vinculado</Label>
+                <Combobox
+                  options={contracts.map((c) => ({
+                    label: c.identifier
+                      ? `${c.identifier} - ${c.suppliers?.name || ''}`
+                      : `Contrato (Fornecedor: ${c.suppliers?.name || 'N/A'})`,
+                    value: c.id,
+                  }))}
+                  value={formData.contract_id}
+                  onChange={(v) => setFormData({ ...formData, contract_id: v })}
+                  placeholder="Selecione o contrato de locação/manutenção..."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Opcional. Vincula este ativo a um contrato específico de fornecedor.
+                </p>
               </div>
             </div>
           </CardContent>

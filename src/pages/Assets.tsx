@@ -39,6 +39,7 @@ export default function Assets() {
   const [assets, setAssets] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [locators, setLocators] = useState<any[]>([])
+  const [contracts, setContracts] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
@@ -55,6 +56,7 @@ export default function Assets() {
     identifier: '',
     status: 'Ativo',
     locator_id: '',
+    contract_id: '',
     patrimony: '',
     serial: '',
     description: '',
@@ -62,22 +64,29 @@ export default function Assets() {
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [assetsRes, prodsRes, locsRes] = await Promise.all([
+    const [assetsRes, prodsRes, locsRes, contractsRes] = await Promise.all([
       supabase
         .from('assets')
         .select(`
           *,
           products(name, type, brands(name), categories(name)),
-          locators(name)
+          locators(name),
+          contracts(identifier, suppliers(name))
         `)
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
       supabase.from('products').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('locators').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase
+        .from('contracts')
+        .select('*, suppliers(name)')
+        .eq('company_id', activeCompanyId)
+        .order('identifier'),
     ])
     if (assetsRes.data) setAssets(assetsRes.data)
     if (prodsRes.data) setProducts(prodsRes.data)
     if (locsRes.data) setLocators(locsRes.data)
+    if (contractsRes.data) setContracts(contractsRes.data)
   }
 
   useEffect(() => {
@@ -165,6 +174,7 @@ export default function Assets() {
       identifier: asset.identifier || '',
       status: asset.status || 'Ativo',
       locator_id: asset.locator_id || '',
+      contract_id: asset.contract_id || '',
       patrimony: asset.patrimony || '',
       serial: asset.serial || '',
       description: asset.description || '',
@@ -194,6 +204,7 @@ export default function Assets() {
         identifier: formData.identifier,
         status: formData.status,
         locator_id: formData.locator_id || null,
+        contract_id: formData.contract_id || null,
         patrimony: formData.patrimony,
         serial: formData.serial,
         description: formData.description,
@@ -328,7 +339,19 @@ export default function Assets() {
                       <TableCell>{pName}</TableCell>
                       <TableCell>{item.serial || '-'}</TableCell>
                       <TableCell>{item.status || '-'}</TableCell>
-                      <TableCell>{item.locators?.name || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span>{item.locators?.name || '-'}</span>
+                          {item.contracts && (
+                            <span
+                              className="text-[10px] text-muted-foreground border border-border px-1 py-0.5 rounded-sm inline-block w-fit truncate max-w-[120px]"
+                              title={item.contracts.identifier || 'Contrato'}
+                            >
+                              {item.contracts.identifier || 'Contrato Vinculado'}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -455,6 +478,21 @@ export default function Assets() {
                 value={formData.locator_id}
                 onChange={(v) => setFormData({ ...formData, locator_id: v })}
                 placeholder="Selecione o local..."
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2 border-t pt-4">
+              <Label>Contrato Vinculado</Label>
+              <Combobox
+                options={contracts.map((c) => ({
+                  label: c.identifier
+                    ? `${c.identifier} - ${c.suppliers?.name || ''}`
+                    : `Contrato (Fornecedor: ${c.suppliers?.name || 'N/A'})`,
+                  value: c.id,
+                }))}
+                value={formData.contract_id}
+                onChange={(v) => setFormData({ ...formData, contract_id: v })}
+                placeholder="Selecione o contrato de locação/manutenção..."
               />
             </div>
           </div>
