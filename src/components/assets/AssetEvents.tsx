@@ -53,12 +53,34 @@ export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: 
   }, [asset, isOpen])
 
   const fetchEvents = async () => {
-    const { data } = await supabase
-      .from('asset_events')
-      .select('*, new_locator:locators!new_locator_id(name), profiles:user_id(name)')
-      .eq('asset_id', asset.id)
-      .order('date', { ascending: false })
-    if (data) setEvents(data)
+    const [{ data: evts }, { data: maints }] = await Promise.all([
+      supabase
+        .from('asset_events')
+        .select('*, new_locator:locators!new_locator_id(name), profiles:user_id(name)')
+        .eq('asset_id', asset.id)
+        .order('date', { ascending: false }),
+      supabase
+        .from('maintenances')
+        .select('*')
+        .eq('asset_id', asset.id)
+        .order('created_at', { ascending: false }),
+    ])
+
+    const combined = [
+      ...(evts || []).map((e) => ({
+        ...e,
+        _type: 'event',
+        displayDate: e.date,
+      })),
+      ...(maints || []).map((m) => ({
+        ...m,
+        _type: 'maintenance',
+        displayDate: m.start_date || m.date || m.created_at,
+        profiles: { name: m.technician || 'Sistema' },
+      })),
+    ].sort((a, b) => new Date(b.displayDate).getTime() - new Date(a.displayDate).getTime())
+
+    setEvents(combined)
   }
 
   const handleSave = async () => {
@@ -132,15 +154,18 @@ export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: 
                 <div className="w-4 h-4 rounded-full bg-primary shrink-0 mt-1 z-10 ring-4 ring-background" />
                 <div className="flex-1 p-3 rounded-lg border bg-card shadow-sm text-sm">
                   <div className="flex justify-between items-start mb-1">
-                    <strong className="font-semibold text-primary">{evt.type}</strong>
+                    <strong className="font-semibold text-primary">
+                      {evt._type === 'maintenance' ? `Evento: ${evt.type}` : evt.type}
+                    </strong>
                     <span className="text-xs text-muted-foreground ml-2">
-                      {format(new Date(evt.date), 'dd/MM/yyyy HH:mm')}
+                      {format(new Date(evt.displayDate), 'dd/MM/yyyy HH:mm')}
                     </span>
                   </div>
                   <div className="text-muted-foreground mb-2 text-xs font-medium">
                     {evt.profiles?.name || 'Usuário'}
                   </div>
-                  {evt.description && <p className="mb-2">{evt.description}</p>}
+                  {evt.status && <p className="text-xs font-semibold mb-1">Status: {evt.status}</p>}
+                  {evt.description && <p className="mb-2 whitespace-pre-wrap">{evt.description}</p>}
                   {evt.parts_replaced && (
                     <p className="text-xs bg-muted p-2 rounded mt-2">
                       <span className="font-semibold text-foreground">Peças:</span>{' '}
