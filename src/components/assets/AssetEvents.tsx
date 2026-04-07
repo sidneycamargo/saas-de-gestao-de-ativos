@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast'
 import useCompanyStore from '@/stores/useCompanyStore'
 
 const EVENT_TYPES = [
+  { label: 'Abertura de Chamado', value: 'Abertura de Chamado' },
   { label: 'Entrada (Aquisição / Transferência)', value: 'Entrada' },
   { label: 'Saída / Baixa', value: 'Baixa' },
   { label: 'Assistência Técnica Externa', value: 'Assistência Externa' },

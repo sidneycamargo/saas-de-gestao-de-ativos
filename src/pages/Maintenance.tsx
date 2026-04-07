@@ -103,6 +103,12 @@ function EventStatusBadge({ status }: { status: string }) {
       )
     case 'Cancelado':
       return <Badge variant="destructive">Cancelado</Badge>
+    case 'Aberto':
+      return (
+        <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+          Aberto
+        </Badge>
+      )
     case 'Pendente':
     default:
       return <Badge variant="outline">{status || 'Pendente'}</Badge>
@@ -121,14 +127,14 @@ export default function Maintenance() {
     warranties: [] as any[],
   })
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external'>('quick')
+  const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external' | 'ticket'>('ticket')
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     assetId: '',
     supplierId: '',
     isWarranty: false,
-    type: 'Corretiva',
+    type: 'Abertura de Chamado',
     start_date: new Date().toISOString().split('T')[0],
     forecast_date: '',
     end_date: '',
@@ -137,7 +143,7 @@ export default function Maintenance() {
     origin: 'Manual',
     channels: [] as string[],
     primaryChannel: '',
-    status: 'Pendente',
+    status: 'Aberto',
     technician: '',
   })
 
@@ -194,7 +200,7 @@ export default function Maintenance() {
     })
   }
 
-  const openDialog = (mode: 'quick' | 'internal' | 'external', m?: any) => {
+  const openDialog = (mode: 'quick' | 'internal' | 'external' | 'ticket', m?: any) => {
     setCallMode(mode)
     if (m) {
       setEditingId(m.id)
@@ -211,7 +217,7 @@ export default function Maintenance() {
         origin: m.origin || 'Manual',
         channels: [],
         primaryChannel: '',
-        status: m.status || 'Pendente',
+        status: m.status || 'Aberto',
         technician: m.technician || '',
       })
     } else {
@@ -220,7 +226,7 @@ export default function Maintenance() {
         assetId: '',
         supplierId: '',
         isWarranty: false,
-        type: 'Corretiva',
+        type: mode === 'ticket' ? 'Abertura de Chamado' : 'Corretiva',
         start_date: new Date().toISOString().split('T')[0],
         forecast_date: '',
         end_date: '',
@@ -231,10 +237,12 @@ export default function Maintenance() {
             ? 'Manual'
             : mode === 'internal'
               ? 'Planejamento'
-              : 'Acionamento Externo',
+              : mode === 'ticket'
+                ? 'Chamado'
+                : 'Acionamento Externo',
         channels: [],
         primaryChannel: '',
-        status: 'Pendente',
+        status: 'Aberto',
         technician: '',
       })
     }
@@ -242,7 +250,8 @@ export default function Maintenance() {
   }
 
   const handleEdit = (m: any) => {
-    if (m.type === 'Solicitação') openDialog('quick', m)
+    if (m.type === 'Abertura de Chamado') openDialog('ticket', m)
+    else if (m.type === 'Solicitação') openDialog('quick', m)
     else if (m.type === 'Suporte Técnico' || m.type === 'Chamado Externo') openDialog('external', m)
     else openDialog('internal', m)
   }
@@ -285,6 +294,11 @@ export default function Maintenance() {
     if (callMode === 'quick') {
       payload.type = 'Solicitação'
       if (!editingId && !formData.technician) payload.technician = 'A Definir'
+    } else if (callMode === 'ticket') {
+      payload.type = 'Abertura de Chamado'
+      payload.supplier_id = formData.supplierId || null
+      payload.is_warranty = formData.isWarranty
+      if (!editingId && !formData.technician) payload.technician = 'Suporte Interno'
     } else if (callMode === 'internal') {
       payload.type = formData.type
       if (!editingId && !formData.technician) payload.technician = 'Interno'
@@ -362,6 +376,9 @@ export default function Maintenance() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem onClick={() => openDialog('ticket')}>
+              <PhoneCall className="w-4 h-4 mr-2" /> Abertura de Chamado
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('quick')}>
               <AlertCircle className="w-4 h-4 mr-2" /> Relato de Problema Rápido
             </DropdownMenuItem>
@@ -441,7 +458,7 @@ export default function Maintenance() {
                     </TableCell>
                     <TableCell>{m.technician}</TableCell>
                     <TableCell>
-                      <EventStatusBadge status={m.status || 'Pendente'} />
+                      <EventStatusBadge status={m.status || 'Aberto'} />
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -482,6 +499,7 @@ export default function Maintenance() {
           <DialogHeader>
             <DialogTitle>
               {editingId ? 'Editar Evento' : callMode === 'quick' && 'Relato de Problema Rápido'}
+              {!editingId && callMode === 'ticket' && 'Abertura de Chamado'}
               {!editingId && callMode === 'internal' && 'Nova OS / Manutenção Interna'}
               {!editingId && callMode === 'external' && 'Acionar Suporte Técnico'}
             </DialogTitle>
@@ -522,15 +540,19 @@ export default function Maintenance() {
               </Select>
             </div>
 
-            {warrantySupplierIds.length > 0 && formData.assetId && callMode !== 'external' && (
-              <div className="bg-primary/10 text-primary p-3 rounded-md flex items-start gap-2">
-                <ShieldCheck className="w-5 h-5 shrink-0" />
-                <div className="text-sm">
-                  <strong>Garantia Ativa!</strong> Este ativo possui fornecedores responsáveis pela
-                  garantia. Considere utilizar o tipo "Suporte Técnico Externo".
+            {warrantySupplierIds.length > 0 &&
+              formData.assetId &&
+              callMode !== 'external' &&
+              callMode !== 'ticket' && (
+                <div className="bg-primary/10 text-primary p-3 rounded-md flex items-start gap-2">
+                  <ShieldCheck className="w-5 h-5 shrink-0" />
+                  <div className="text-sm">
+                    <strong>Garantia Ativa!</strong> Este ativo possui fornecedores responsáveis
+                    pela garantia. Considere utilizar o tipo "Suporte Técnico Externo" ou "Abertura
+                    de Chamado".
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -582,6 +604,7 @@ export default function Maintenance() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Aberto">Aberto</SelectItem>
                     <SelectItem value="Pendente">Pendente</SelectItem>
                     <SelectItem value="Em Andamento">Em Andamento</SelectItem>
                     <SelectItem value="Aguardando Peças">Aguardando Peças</SelectItem>
@@ -638,20 +661,20 @@ export default function Maintenance() {
               </div>
             )}
 
-            {callMode === 'external' && (
+            {(callMode === 'external' || callMode === 'ticket') && (
               <div className="space-y-2 border p-4 rounded-md bg-slate-50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Fornecedor / Assistência</Label>
+                    <Label>Fornecedor / Assistência (Suporte Externo)</Label>
                     <Select
                       value={formData.supplierId}
                       onValueChange={(v) => setFormData({ ...formData, supplierId: v })}
-                      disabled={!!editingId}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
+                        <SelectValue placeholder="Nenhum (Suporte Interno)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">Nenhum (Suporte Interno)</SelectItem>
                         {data.suppliers.map((s) => {
                           const isWarr = warrantySupplierIds.includes(s.id)
                           return (
@@ -675,7 +698,7 @@ export default function Maintenance() {
                   </div>
                 </div>
 
-                {selectedSupplier && !editingId && (
+                {callMode === 'external' && selectedSupplier && !editingId && (
                   <div className="space-y-3 pt-4 mt-2 border-t">
                     <Label className="text-sm text-slate-700">
                       Canais de Contato Utilizados para Abertura
