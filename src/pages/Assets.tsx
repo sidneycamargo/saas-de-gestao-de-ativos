@@ -80,13 +80,18 @@ export default function Assets() {
   }, [activeCompanyId])
 
   const filteredAssets = assets.filter((a) => {
+    const term = searchTerm.toLowerCase()
     const pName = a.products?.name || a.name || ''
+
     const matchesSearch =
-      pName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.identifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.patrimony?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.serial?.toLowerCase().includes(searchTerm.toLowerCase())
+      a.name?.toLowerCase().includes(term) ||
+      a.description?.toLowerCase().includes(term) ||
+      a.patrimony?.toLowerCase().includes(term) ||
+      a.identifier?.toLowerCase().includes(term) ||
+      pName.toLowerCase().includes(term) ||
+      a.serial?.toLowerCase().includes(term) ||
+      a.status?.toLowerCase().includes(term) ||
+      a.locators?.name?.toLowerCase().includes(term)
 
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter
 
