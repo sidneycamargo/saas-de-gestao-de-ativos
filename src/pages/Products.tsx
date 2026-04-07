@@ -89,18 +89,26 @@ export default function Products() {
   }, [activeCompanyId])
 
   const filteredProducts = products.filter((p) => {
-    const term = searchTerm.toLowerCase()
-    const matchesSearch =
-      p.name?.toLowerCase().includes(term) ||
-      p.specification?.toLowerCase().includes(term) ||
-      translateType(p.type).toLowerCase().includes(term) ||
-      p.categories?.name?.toLowerCase().includes(term) ||
-      p.brands?.name?.toLowerCase().includes(term) ||
-      p.model?.toLowerCase().includes(term) ||
-      p.sku?.toLowerCase().includes(term) ||
-      String(p.stock || 0).includes(term)
-
+    const terms = searchTerm.toLowerCase().split(' ').filter(Boolean)
     const matchesType = typeFilter === 'all' || p.type === typeFilter
+
+    if (terms.length === 0) return matchesType
+
+    const searchableFields = [
+      p.name,
+      p.specification,
+      translateType(p.type),
+      p.categories?.name,
+      p.brands?.name,
+      p.model,
+      p.sku,
+      String(p.stock || 0),
+    ].map((f) => (f || '').toLowerCase())
+
+    const matchesSearch = terms.some((term) =>
+      searchableFields.some((field) => field.includes(term)),
+    )
+
     return matchesSearch && matchesType
   })
 

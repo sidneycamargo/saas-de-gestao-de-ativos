@@ -80,20 +80,27 @@ export default function Assets() {
   }, [activeCompanyId])
 
   const filteredAssets = assets.filter((a) => {
-    const term = searchTerm.toLowerCase()
+    const terms = searchTerm.toLowerCase().split(' ').filter(Boolean)
+    const matchesStatus = statusFilter === 'all' || a.status === statusFilter
+
+    if (terms.length === 0) return matchesStatus
+
     const pName = a.products?.name || a.name || ''
 
-    const matchesSearch =
-      a.name?.toLowerCase().includes(term) ||
-      a.description?.toLowerCase().includes(term) ||
-      a.patrimony?.toLowerCase().includes(term) ||
-      a.identifier?.toLowerCase().includes(term) ||
-      pName.toLowerCase().includes(term) ||
-      a.serial?.toLowerCase().includes(term) ||
-      a.status?.toLowerCase().includes(term) ||
-      a.locators?.name?.toLowerCase().includes(term)
+    const searchableFields = [
+      a.name,
+      a.description,
+      a.patrimony,
+      a.identifier,
+      pName,
+      a.serial,
+      a.status,
+      a.locators?.name,
+    ].map((f) => (f || '').toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || a.status === statusFilter
+    const matchesSearch = terms.some((term) =>
+      searchableFields.some((field) => field.includes(term)),
+    )
 
     return matchesSearch && matchesStatus
   })
