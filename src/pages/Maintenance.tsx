@@ -11,7 +11,12 @@ import {
   MailCheck,
   ShieldCheck,
   Activity,
+  BarChart3,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -172,6 +177,8 @@ export default function Maintenance() {
       name: string
       problem_description: string
       notes: string
+      photo_before?: string
+      photo_after?: string
     }[],
   })
 
@@ -274,6 +281,8 @@ export default function Maintenance() {
             name: ma.assets?.name || 'Ativo',
             problem_description: ma.problem_description || '',
             notes: ma.notes || '',
+            photo_before: ma.photo_before || '',
+            photo_after: ma.photo_after || '',
           })) || [],
       })
     } else {
@@ -439,6 +448,8 @@ export default function Maintenance() {
         asset_id: ma.asset_id,
         problem_description: ma.problem_description,
         notes: ma.notes,
+        photo_before: ma.photo_before || null,
+        photo_after: ma.photo_after || null,
       }))
       const { error: maError } = await supabase
         .from('maintenance_assets' as any)
@@ -475,6 +486,24 @@ export default function Maintenance() {
     .filter((w) => w.asset_id === formData.assetId && isWarrantyActive(w))
     .flatMap((w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [])
 
+  const handlePhotoUpload = (index: number, type: 'photo_before' | 'photo_after') => {
+    toast({ title: 'Simulando upload de foto...' })
+    setTimeout(() => {
+      const newAssets = [...formData.maintenanceAssets]
+      const randomId = Math.floor(Math.random() * 100)
+      newAssets[index][type] =
+        `https://img.usecurling.com/p/400/300?q=broken%20machine&seed=${randomId}`
+      setFormData({ ...formData, maintenanceAssets: newAssets })
+      toast({ title: 'Foto anexada com sucesso!' })
+    }, 800)
+  }
+
+  const removePhoto = (index: number, type: 'photo_before' | 'photo_after') => {
+    const newAssets = [...formData.maintenanceAssets]
+    newAssets[index][type] = ''
+    setFormData({ ...formData, maintenanceAssets: newAssets })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -484,30 +513,37 @@ export default function Maintenance() {
             Controle de eventos, chamados, manutenções e suportes técnicos.
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" /> Novo Evento
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuItem onClick={() => openDialog('ticket')}>
-              <PhoneCall className="w-4 h-4 mr-2" /> Abertura de Chamado
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog('quick')}>
-              <AlertCircle className="w-4 h-4 mr-2" /> Relato de Problema Rápido
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog('internal')}>
-              <Wrench className="w-4 h-4 mr-2" /> Manutenção Corretiva (Por Ativo)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog('external')}>
-              <Activity className="w-4 h-4 mr-2" /> Suporte Técnico Externo
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDialog('preventive')}>
-              <CalendarIcon className="w-4 h-4 mr-2" /> Manutenção Preventiva (Por Contrato)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link to="/reports">
+              <BarChart3 className="w-4 h-4 mr-2" /> Relatório de Falhas
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" /> Novo Evento
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onClick={() => openDialog('ticket')}>
+                <PhoneCall className="w-4 h-4 mr-2" /> Abertura de Chamado
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openDialog('quick')}>
+                <AlertCircle className="w-4 h-4 mr-2" /> Relato de Problema Rápido
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openDialog('internal')}>
+                <Wrench className="w-4 h-4 mr-2" /> Manutenção Corretiva (Por Ativo)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openDialog('external')}>
+                <Activity className="w-4 h-4 mr-2" /> Suporte Técnico Externo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openDialog('preventive')}>
+                <CalendarIcon className="w-4 h-4 mr-2" /> Manutenção Preventiva (Por Contrato)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Card>
@@ -701,6 +737,8 @@ export default function Maintenance() {
                         name: a.name,
                         problem_description: '',
                         notes: '',
+                        photo_before: '',
+                        photo_after: '',
                       })),
                     })
                   }}
@@ -747,6 +785,8 @@ export default function Maintenance() {
                               name: asset.name,
                               problem_description: '',
                               notes: '',
+                              photo_before: '',
+                              photo_after: '',
                             },
                           ]
                         : [],
@@ -1076,6 +1116,71 @@ export default function Maintenance() {
                             }}
                             rows={2}
                           />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" /> Foto do Problema (Antes)
+                            </Label>
+                            {ma.photo_before ? (
+                              <div className="relative group">
+                                <img
+                                  src={ma.photo_before}
+                                  alt="Antes"
+                                  className="w-full h-32 object-cover rounded-md border"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removePhoto(index, 'photo_before')}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                className="w-full h-32 flex flex-col items-center justify-center gap-2 border-dashed"
+                                onClick={() => handlePhotoUpload(index, 'photo_before')}
+                              >
+                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Anexar Foto</span>
+                              </Button>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" /> Foto da Resolução (Depois)
+                            </Label>
+                            {ma.photo_after ? (
+                              <div className="relative group">
+                                <img
+                                  src={ma.photo_after}
+                                  alt="Depois"
+                                  className="w-full h-32 object-cover rounded-md border"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => removePhoto(index, 'photo_after')}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                className="w-full h-32 flex flex-col items-center justify-center gap-2 border-dashed"
+                                onClick={() => handlePhotoUpload(index, 'photo_after')}
+                              >
+                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Anexar Foto</span>
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>

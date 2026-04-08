@@ -71,7 +71,8 @@ export default function Assets() {
           *,
           products(name, type, brands(name), categories(name)),
           locators(name),
-          contracts(identifier, suppliers(name))
+          contracts(identifier, suppliers(name)),
+          maintenance_assets(problem_description)
         `)
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
@@ -310,6 +311,7 @@ export default function Assets() {
                     Localização {getSortIcon('locators.name')}
                   </div>
                 </TableHead>
+                <TableHead>Saúde</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -352,6 +354,35 @@ export default function Assets() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const problems =
+                            item.maintenance_assets?.filter((ma: any) =>
+                              ma.problem_description?.trim(),
+                            ).length || 0
+                          const score = Math.max(0, 100 - problems * 15)
+                          let color = 'text-danger'
+                          let bg = 'bg-danger'
+                          if (score >= 80) {
+                            color = 'text-success'
+                            bg = 'bg-success'
+                          } else if (score >= 50) {
+                            color = 'text-warning'
+                            bg = 'bg-warning'
+                          }
+                          return (
+                            <div
+                              className="flex items-center gap-2"
+                              title={`${problems} problemas registrados`}
+                            >
+                              <div
+                                className={`h-2.5 w-2.5 rounded-full ${bg} ${score < 80 ? 'animate-pulse' : ''}`}
+                              />
+                              <span className={`text-sm font-medium ${color}`}>{score}%</span>
+                            </div>
+                          )
+                        })()}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -384,7 +415,7 @@ export default function Assets() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhum ativo encontrado.
                   </TableCell>
                 </TableRow>

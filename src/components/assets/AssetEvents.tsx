@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Plus, History } from 'lucide-react'
+import { Plus, History, Activity } from 'lucide-react'
 import { format } from 'date-fns'
 import {
   Dialog,
@@ -39,6 +39,7 @@ interface AssetEventsProps {
 export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: AssetEventsProps) {
   const { activeCompanyId } = useCompanyStore()
   const [events, setEvents] = useState<any[]>([])
+  const [healthScore, setHealthScore] = useState<number>(100)
   const [loading, setLoading] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
 
@@ -54,7 +55,7 @@ export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: 
   }, [asset, isOpen])
 
   const fetchEvents = async () => {
-    const [{ data: evts }, { data: maints }] = await Promise.all([
+    const [{ data: evts }, { data: maints }, { data: mas }] = await Promise.all([
       supabase
         .from('asset_events')
         .select('*, new_locator:locators!new_locator_id(name), profiles:user_id(name)')
@@ -65,7 +66,11 @@ export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: 
         .select('*')
         .eq('asset_id', asset.id)
         .order('created_at', { ascending: false }),
+      supabase.from('maintenance_assets').select('problem_description').eq('asset_id', asset.id),
     ])
+
+    const problems = mas?.filter((m) => m.problem_description?.trim()).length || 0
+    setHealthScore(Math.max(0, 100 - problems * 15))
 
     const combined = [
       ...(evts || []).map((e) => ({
@@ -136,9 +141,24 @@ export function AssetEvents({ asset, isOpen, onClose, onEventAdded, locators }: 
     <Sheet open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader className="mb-6 mt-4">
-          <SheetTitle className="flex items-center gap-2">
-            <History className="w-5 h-5" /> Histórico do Ativo
-          </SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" /> Histórico do Ativo
+            </SheetTitle>
+            <div
+              className="flex items-center gap-2 px-2 py-1 bg-muted rounded-md"
+              title="Score de Saúde do Ativo"
+            >
+              <Activity
+                className={`w-4 h-4 ${healthScore >= 80 ? 'text-success' : healthScore >= 50 ? 'text-warning' : 'text-danger'}`}
+              />
+              <span
+                className={`text-sm font-bold ${healthScore >= 80 ? 'text-success' : healthScore >= 50 ? 'text-warning' : 'text-danger'}`}
+              >
+                {healthScore}%
+              </span>
+            </div>
+          </div>
           <div className="text-sm text-muted-foreground mt-1">
             {asset?.name || asset?.products?.name} {asset?.patrimony ? `- ${asset.patrimony}` : ''}
           </div>

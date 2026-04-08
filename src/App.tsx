@@ -26,6 +26,7 @@ import Warranties from './pages/Warranties'
 import History from './pages/History'
 import Settings from './pages/Settings'
 import Profile from './pages/Profile'
+import Reports from './pages/Reports'
 
 import AdminCompanies from './pages/admin/Companies'
 import AdminSubscriptions from './pages/admin/Subscriptions'
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/reports" element={<Reports />} />
 
               <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
