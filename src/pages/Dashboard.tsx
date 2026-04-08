@@ -1,5 +1,23 @@
-import { Package, Wrench, ShieldAlert, Activity, Building, CreditCard, Users } from 'lucide-react'
+import {
+  Package,
+  Wrench,
+  ShieldAlert,
+  Activity,
+  Building,
+  CreditCard,
+  Users,
+  Calendar as CalendarIcon,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { kpis, recentActivity, stockData, equipment, maintenances, parts } from '@/lib/mock-data'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, Cell } from 'recharts'
@@ -7,6 +25,18 @@ import { useMemo, useState, useEffect } from 'react'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+
+interface DashboardMaintenance {
+  id: string
+  description: string | null
+  date: string | null
+  forecast_date: string | null
+  status: string | null
+  type: string | null
+  assets: any
+}
 
 export default function Dashboard() {
   const { activeCompanyId } = useCompanyStore()
@@ -34,6 +64,35 @@ export default function Dashboard() {
     () => recentActivity.filter((a) => a.companyId === activeCompanyId),
     [activeCompanyId],
   )
+
+  const [upcomingMaintenances, setUpcomingMaintenances] = useState<DashboardMaintenance[]>([])
+
+  useEffect(() => {
+    if (!activeCompanyId) return
+
+    async function loadMaintenances() {
+      const { data } = await supabase
+        .from('maintenances')
+        .select(`
+          id,
+          description,
+          date,
+          forecast_date,
+          status,
+          type,
+          assets ( name )
+        `)
+        .eq('company_id', activeCompanyId)
+        .order('date', { ascending: false, nullsFirst: false })
+        .limit(10)
+
+      if (data) {
+        setUpcomingMaintenances(data)
+      }
+    }
+
+    loadMaintenances()
+  }, [activeCompanyId])
 
   const chartConfig = {
     atual: { label: 'Estoque Atual', color: 'hsl(var(--primary))' },
@@ -160,6 +219,85 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Agenda de Manutenções e Eventos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {upcomingMaintenances.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Ativo</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingMaintenances.map((m) => {
+                  const assetName = Array.isArray(m.assets) ? m.assets[0]?.name : m.assets?.name
+                  const eventDate = m.date || m.forecast_date
+
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell>
+                        <div className="flex items-center whitespace-nowrap text-sm">
+                          <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                          {eventDate
+                            ? format(parseISO(eventDate), 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Não definida'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {assetName || 'Múltiplos/Não definido'}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-[250px] truncate"
+                        title={m.description || 'Manutenção'}
+                      >
+                        {m.description || 'Manutenção'}
+                      </TableCell>
+                      <TableCell>{m.type || '-'}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          switch (m.status) {
+                            case 'Concluído':
+                              return (
+                                <Badge className="bg-success hover:bg-success/80 text-white border-transparent">
+                                  {m.status}
+                                </Badge>
+                              )
+                            case 'Em Andamento':
+                              return (
+                                <Badge className="bg-warning hover:bg-warning/80 text-white border-transparent">
+                                  {m.status}
+                                </Badge>
+                              )
+                            case 'Atrasado':
+                              return <Badge variant="destructive">{m.status}</Badge>
+                            case 'Pendente':
+                            case 'Agendado':
+                              return <Badge variant="secondary">{m.status}</Badge>
+                            default:
+                              return <Badge variant="outline">{m.status || 'N/A'}</Badge>
+                          }
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+              Nenhuma manutenção ou evento registrado.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
