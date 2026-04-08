@@ -344,56 +344,97 @@ export default function Contracts() {
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-4 md:col-span-2">
               <Label>Ativos Vinculados</Label>
-              <ScrollArea className="h-[200px] w-full border rounded-md p-4">
-                <div className="space-y-4">
-                  {assetsList.map((asset) => {
-                    const isLinkedToOther = asset.contract_id && asset.contract_id !== editingId
-                    return (
-                      <div key={asset.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`asset-${asset.id}`}
-                          checked={formData.selected_assets.includes(asset.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFormData({
-                                ...formData,
-                                selected_assets: [...formData.selected_assets, asset.id],
-                              })
-                            } else {
-                              setFormData({
-                                ...formData,
-                                selected_assets: formData.selected_assets.filter(
-                                  (id) => id !== asset.id,
-                                ),
-                              })
-                            }
-                          }}
-                        />
-                        <Label
-                          htmlFor={`asset-${asset.id}`}
-                          className="flex items-center gap-2 cursor-pointer font-normal"
-                        >
-                          <span>
-                            {asset.name} {asset.patrimony ? `(${asset.patrimony})` : ''}
-                          </span>
-                          {isLinkedToOther && !formData.selected_assets.includes(asset.id) && (
-                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              Em outro contrato
-                            </span>
-                          )}
-                        </Label>
-                      </div>
-                    )
-                  })}
-                  {assetsList.length === 0 && (
-                    <div className="text-sm text-muted-foreground">Nenhum ativo encontrado.</div>
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="flex gap-2">
+                <Select
+                  value=""
+                  onValueChange={(val) => {
+                    if (val && val !== 'none' && !formData.selected_assets.includes(val)) {
+                      setFormData({
+                        ...formData,
+                        selected_assets: [...formData.selected_assets, val],
+                      })
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um ativo para vincular..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assetsList.filter((a) => !formData.selected_assets.includes(a.id)).length >
+                    0 ? (
+                      assetsList
+                        .filter((a) => !formData.selected_assets.includes(a.id))
+                        .map((asset) => {
+                          const isLinkedToOther =
+                            asset.contract_id && asset.contract_id !== editingId
+                          return (
+                            <SelectItem key={asset.id} value={asset.id}>
+                              {asset.name} {asset.patrimony ? `(${asset.patrimony})` : ''}
+                              {isLinkedToOther ? ' [Em outro contrato]' : ''}
+                            </SelectItem>
+                          )
+                        })
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        Nenhum ativo disponível
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="border rounded-md">
+                <ScrollArea className="h-[200px] w-full">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead>Ativo</TableHead>
+                        <TableHead>Patrimônio</TableHead>
+                        <TableHead className="w-[80px] text-right">Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {formData.selected_assets.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            Nenhum ativo vinculado a este contrato.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        assetsList
+                          .filter((a) => formData.selected_assets.includes(a.id))
+                          .map((asset) => (
+                            <TableRow key={asset.id}>
+                              <TableCell className="font-medium">{asset.name}</TableCell>
+                              <TableCell>{asset.patrimony || '-'}</TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    setFormData({
+                                      ...formData,
+                                      selected_assets: formData.selected_assets.filter(
+                                        (id) => id !== asset.id,
+                                      ),
+                                    })
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Selecione os equipamentos que são cobertos por este contrato.
+                Adicione ou remova os equipamentos que são cobertos por este contrato.
               </p>
             </div>
 
