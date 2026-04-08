@@ -49,6 +49,13 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from '@/hooks/use-toast'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { supabase } from '@/lib/supabase/client'
@@ -150,6 +157,7 @@ export default function Maintenance() {
     forecast_date: '',
     end_date: '',
     description: '',
+    execution_notes: '',
     priority: 'Média',
     origin: 'Manual',
     channels: [] as string[],
@@ -157,6 +165,13 @@ export default function Maintenance() {
     status: 'Aberto',
     technician: '',
     technician_id: 'none',
+    maintenanceAssets: [] as {
+      id?: string
+      asset_id: string
+      name: string
+      problem_description: string
+      notes: string
+    }[],
   })
 
   const fetchData = async () => {
@@ -165,7 +180,7 @@ export default function Maintenance() {
       supabase
         .from('maintenances')
         .select(
-          '*, assets(name), technicians(name), contracts:contract_id(identifier, suppliers(name))',
+          '*, assets(name), technicians(name), contracts:contract_id(identifier, suppliers(name)), maintenance_assets(*, assets(name, patrimony))',
         )
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }) as Promise<any>,
@@ -239,6 +254,7 @@ export default function Maintenance() {
         forecast_date: m.forecast_date || '',
         end_date: m.end_date || '',
         description: m.description || '',
+        execution_notes: m.execution_notes || '',
         priority: m.priority || 'Média',
         origin: m.origin || 'Manual',
         channels: [],
@@ -246,6 +262,14 @@ export default function Maintenance() {
         status: m.status || 'Aberto',
         technician: m.technician || '',
         technician_id: m.technician_id || 'none',
+        maintenanceAssets:
+          m.maintenance_assets?.map((ma: any) => ({
+            id: ma.id,
+            asset_id: ma.asset_id,
+            name: ma.assets?.name || 'Ativo',
+            problem_description: ma.problem_description || '',
+            notes: ma.notes || '',
+          })) || [],
       })
     } else {
       setEditingId(null)
@@ -264,6 +288,7 @@ export default function Maintenance() {
         forecast_date: '',
         end_date: '',
         description: '',
+        execution_notes: '',
         priority: 'Média',
         origin:
           mode === 'quick'
@@ -280,6 +305,7 @@ export default function Maintenance() {
         status: mode === 'preventive' ? 'Agendado' : 'Aberto',
         technician: '',
         technician_id: 'none',
+        maintenanceAssets: [],
       })
     }
     setDialogOpen(true)
@@ -326,6 +352,7 @@ export default function Maintenance() {
       asset_id: callMode !== 'preventive' ? formData.assetId : null,
       contract_id: callMode === 'preventive' ? formData.contractId : null,
       description: formData.description,
+      execution_notes: formData.execution_notes,
       priority: formData.priority,
       origin: formData.origin,
       start_date: formData.start_date || null,
@@ -372,29 +399,47 @@ export default function Maintenance() {
       }
     }
 
+    let savedMaintenanceId = editingId
+
     if (editingId) {
       const { error } = await supabase.from('maintenances').update(payload).eq('id', editingId)
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Evento atualizado com sucesso!' })
-        setDialogOpen(false)
-        fetchData()
-      }
+      if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
-      const { error } = await supabase.from('maintenances').insert(payload)
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Evento criado com sucesso!' })
-        if (payload.email_sent) {
-          toast({
-            title: 'E-mail enviado',
-            description: 'O fornecedor foi notificado por e-mail de forma sistêmica.',
-          })
-        }
-        setDialogOpen(false)
-        fetchData()
+      const { data, error } = await supabase.from('maintenances').insert(payload).select().single()
+      if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+      savedMaintenanceId = data.id
+    }
+
+    if (savedMaintenanceId && formData.maintenanceAssets.length > 0) {
+      const assetsPayload = formData.maintenanceAssets.map((ma) => ({
+        id: ma.id || undefined,
+        maintenance_id: savedMaintenanceId,
+        asset_id: ma.asset_id,
+        problem_description: ma.problem_description,
+        notes: ma.notes,
+      }))
+      const { error: maError } = await supabase
+        .from('maintenance_assets' as any)
+        .upsert(assetsPayload, { onConflict: 'maintenance_id,asset_id' })
+      if (maError) {
+        console.error(maError)
+        toast({
+          title: 'Erro ao vincular ativos',
+          description: maError.message,
+          variant: 'destructive',
+        })
       }
     }
+
+    toast({ title: 'Evento salvo com sucesso!' })
+    if (payload.email_sent) {
+      toast({
+        title: 'E-mail enviado',
+        description: 'O fornecedor foi notificado por e-mail de forma sistêmica.',
+      })
+    }
+    setDialogOpen(false)
+    fetchData()
   }
 
   const isWarrantyActive = (w: any) => {
@@ -469,13 +514,61 @@ export default function Maintenance() {
                       {m.contract_id && m.contracts ? (
                         <div className="text-primary font-semibold">
                           Contrato: {m.contracts.identifier || 'Sem identificador'}
+                          {m.maintenance_assets?.length > 0 && (
+                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1 font-normal">
+                              {m.maintenance_assets.length} ativos vinculados
+                              {m.maintenance_assets.filter((ma: any) => ma.problem_description)
+                                .length > 0 && (
+                                <Popover>
+                                  <PopoverTrigger className="text-danger hover:underline cursor-pointer flex items-center ml-1">
+                                    (
+                                    {
+                                      m.maintenance_assets.filter(
+                                        (ma: any) => ma.problem_description,
+                                      ).length
+                                    }{' '}
+                                    com problemas)
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-80">
+                                    <div className="space-y-2">
+                                      <h4 className="font-semibold text-sm">Problemas Relatados</h4>
+                                      {m.maintenance_assets
+                                        .filter((ma: any) => ma.problem_description)
+                                        .map((ma: any) => (
+                                          <div
+                                            key={ma.id || ma.asset_id}
+                                            className="text-sm border-b pb-2 last:border-0"
+                                          >
+                                            <span className="font-medium block">
+                                              {ma.assets?.name || 'Ativo'}:
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                              {ma.problem_description}
+                                            </span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div>{m.assets?.name || 'Ativo Removido'}</div>
+                        <div>
+                          <div>{m.assets?.name || 'Ativo Removido'}</div>
+                          {m.maintenance_assets?.length > 0 &&
+                            (m.maintenance_assets[0]?.problem_description ||
+                              m.maintenance_assets[0]?.notes) && (
+                              <div className="text-xs text-muted-foreground mt-1 font-normal">
+                                Possui anotações detalhadas
+                              </div>
+                            )}
+                        </div>
                       )}
                       {m.description && (
                         <div
-                          className="text-xs text-muted-foreground truncate max-w-[200px]"
+                          className="text-xs text-muted-foreground truncate max-w-[200px] mt-1"
                           title={m.description}
                         >
                           {m.description}
@@ -526,7 +619,7 @@ export default function Maintenance() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleEdit(m)}>
-                            <Edit2 className="w-4 h-4 mr-2" /> Editar
+                            <Edit2 className="w-4 h-4 mr-2" /> Editar / Ver Detalhes
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleCancel(m.id)}
@@ -552,10 +645,12 @@ export default function Maintenance() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingId ? 'Editar Evento' : callMode === 'quick' && 'Relato de Problema Rápido'}
+              {editingId
+                ? 'Detalhes do Evento'
+                : callMode === 'quick' && 'Relato de Problema Rápido'}
               {!editingId && callMode === 'ticket' && 'Abertura de Chamado'}
               {!editingId && callMode === 'internal' && 'Nova Manutenção Corretiva (Por Ativo)'}
               {!editingId && callMode === 'external' && 'Acionar Suporte Técnico'}
@@ -574,7 +669,19 @@ export default function Maintenance() {
                 <Label>Contrato *</Label>
                 <Select
                   value={formData.contractId}
-                  onValueChange={(v) => setFormData({ ...formData, contractId: v })}
+                  onValueChange={(v) => {
+                    const contractAssets = data.assets.filter((a) => a.contract_id === v)
+                    setFormData({
+                      ...formData,
+                      contractId: v,
+                      maintenanceAssets: contractAssets.map((a) => ({
+                        asset_id: a.id,
+                        name: a.name,
+                        problem_description: '',
+                        notes: '',
+                      })),
+                    })
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o contrato..." />
@@ -606,7 +713,22 @@ export default function Maintenance() {
                     if (sids.length > 0 && (!nextSupplierId || !sids.includes(nextSupplierId))) {
                       nextSupplierId = sids[0]
                     }
-                    setFormData({ ...formData, assetId: v, supplierId: nextSupplierId })
+                    const asset = data.assets.find((a) => a.id === v)
+                    setFormData({
+                      ...formData,
+                      assetId: v,
+                      supplierId: nextSupplierId,
+                      maintenanceAssets: asset
+                        ? [
+                            {
+                              asset_id: asset.id,
+                              name: asset.name,
+                              problem_description: '',
+                              notes: '',
+                            },
+                          ]
+                        : [],
+                    })
                   }}
                 >
                   <SelectTrigger>
@@ -734,40 +856,6 @@ export default function Maintenance() {
               </div>
             </div>
 
-            {callMode === 'quick' && (
-              <div className="space-y-2">
-                <Label>Origem da Solicitação</Label>
-                <Select
-                  value={formData.origin}
-                  onValueChange={(v) => setFormData({ ...formData, origin: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Manual">Manual</SelectItem>
-                    <SelectItem value="QR Code">Leitura de QR Code</SelectItem>
-                    <SelectItem value="Inspeção">Inspeção de Rotina</SelectItem>
-                    <SelectItem value="Alerta Automático">Alerta Automático (IoT)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {callMode === 'internal' && (
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Input value="Manutenção Corretiva" disabled />
-              </div>
-            )}
-
-            {callMode === 'preventive' && (
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Input value="Manutenção Preventiva" disabled />
-              </div>
-            )}
-
             {(callMode === 'external' || callMode === 'ticket') && (
               <div className="space-y-2 border p-4 rounded-md bg-slate-50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -848,33 +936,103 @@ export default function Maintenance() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(v) => setFormData({ ...formData, priority: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Baixa">Baixa</SelectItem>
-                  <SelectItem value="Média">Média</SelectItem>
-                  <SelectItem value="Alta">Alta</SelectItem>
-                  <SelectItem value="Urgente">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4 pt-4 border-t mt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Detalhes do Evento</h3>
+                <div className="w-1/3">
+                  <Label className="sr-only">Prioridade</Label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(v) => setFormData({ ...formData, priority: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Prioridade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Baixa">Prioridade: Baixa</SelectItem>
+                      <SelectItem value="Média">Prioridade: Média</SelectItem>
+                      <SelectItem value="Alta">Prioridade: Alta</SelectItem>
+                      <SelectItem value="Urgente">Prioridade: Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Motivo / Descrição Geral</Label>
+                <Textarea
+                  placeholder="Descreva o motivo ou sintomas que geraram este evento..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Anotações da Execução (Pós-Evento)</Label>
+                <Textarea
+                  placeholder="Descreva anotações gerais sobre a execução, procedimentos realizados ou pendências..."
+                  value={formData.execution_notes}
+                  onChange={(e) => setFormData({ ...formData, execution_notes: e.target.value })}
+                  rows={2}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Descrição / Sintomas / Observações</Label>
-              <Textarea
-                placeholder="Descreva os detalhes do evento ou problema..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
+            {formData.maintenanceAssets.length > 0 && (
+              <div className="space-y-4 pt-4 border-t mt-2">
+                <h3 className="text-lg font-semibold">
+                  Ativos Vinculados ({formData.maintenanceAssets.length})
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Registre problemas a serem verificados e anotações específicas para cada ativo
+                  durante a execução deste evento.
+                </p>
+                <Accordion type="multiple" className="w-full">
+                  {formData.maintenanceAssets.map((ma, index) => (
+                    <AccordionItem key={ma.asset_id} value={ma.asset_id}>
+                      <AccordionTrigger className="hover:no-underline bg-slate-50 px-4 rounded-md border mb-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Wrench className="w-4 h-4 text-muted-foreground" />
+                          <span>{ma.name}</span>
+                          {ma.problem_description && (
+                            <Badge variant="destructive" className="ml-2 text-[10px]">
+                              Com Problema
+                            </Badge>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-4 bg-white rounded-b-md border-x border-b -mt-3 mb-2 space-y-4 shadow-sm">
+                        <div className="space-y-2">
+                          <Label>Problema Relatado / Observação Pré-Manutenção</Label>
+                          <Textarea
+                            placeholder="Ex: Barulho excessivo na ventoinha, verificar lubrificação..."
+                            value={ma.problem_description}
+                            onChange={(e) => {
+                              const newAssets = [...formData.maintenanceAssets]
+                              newAssets[index].problem_description = e.target.value
+                              setFormData({ ...formData, maintenanceAssets: newAssets })
+                            }}
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Anotações da Execução (Exclusivo deste ativo)</Label>
+                          <Textarea
+                            placeholder="Ex: Foi realizada a troca da peça X, equipamento testado e operacional."
+                            value={ma.notes}
+                            onChange={(e) => {
+                              const newAssets = [...formData.maintenanceAssets]
+                              newAssets[index].notes = e.target.value
+                              setFormData({ ...formData, maintenanceAssets: newAssets })
+                            }}
+                            rows={2}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
