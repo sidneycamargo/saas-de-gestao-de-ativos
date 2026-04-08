@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, Box } from 'lucide-react'
+import { Plus, Edit2, Trash2, Box, ChevronsUpDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
@@ -41,6 +51,7 @@ export default function Contracts() {
   const [assetsList, setAssetsList] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [assetSearchOpen, setAssetSearchOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     identifier: '',
@@ -347,42 +358,62 @@ export default function Contracts() {
             <div className="space-y-4 md:col-span-2">
               <Label>Ativos Vinculados</Label>
               <div className="flex gap-2">
-                <Select
-                  value=""
-                  onValueChange={(val) => {
-                    if (val && val !== 'none' && !formData.selected_assets.includes(val)) {
-                      setFormData({
-                        ...formData,
-                        selected_assets: [...formData.selected_assets, val],
-                      })
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione um ativo para vincular..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assetsList.filter((a) => !formData.selected_assets.includes(a.id)).length >
-                    0 ? (
-                      assetsList
-                        .filter((a) => !formData.selected_assets.includes(a.id))
-                        .map((asset) => {
-                          const isLinkedToOther =
-                            asset.contract_id && asset.contract_id !== editingId
-                          return (
-                            <SelectItem key={asset.id} value={asset.id}>
-                              {asset.name} {asset.patrimony ? `(${asset.patrimony})` : ''}
-                              {isLinkedToOther ? ' [Em outro contrato]' : ''}
-                            </SelectItem>
-                          )
-                        })
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        Nenhum ativo disponível
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <Popover open={assetSearchOpen} onOpenChange={setAssetSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={assetSearchOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      Selecione ou pesquise um ativo para vincular...
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
+                    align="start"
+                  >
+                    <Command>
+                      <CommandInput placeholder="Buscar ativo por nome ou patrimônio..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum ativo encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {assetsList
+                            .filter((a) => !formData.selected_assets.includes(a.id))
+                            .map((asset) => {
+                              const isLinkedToOther =
+                                asset.contract_id && asset.contract_id !== editingId
+                              return (
+                                <CommandItem
+                                  key={asset.id}
+                                  value={`${asset.name} ${asset.patrimony || ''} ${asset.id}`}
+                                  onSelect={() => {
+                                    setFormData({
+                                      ...formData,
+                                      selected_assets: [...formData.selected_assets, asset.id],
+                                    })
+                                    setAssetSearchOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      formData.selected_assets.includes(asset.id)
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  {asset.name} {asset.patrimony ? `(${asset.patrimony})` : ''}
+                                  {isLinkedToOther ? ' [Em outro contrato]' : ''}
+                                </CommandItem>
+                              )
+                            })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="border rounded-md">
