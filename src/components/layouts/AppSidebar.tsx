@@ -17,6 +17,7 @@ import {
   CreditCard,
   Users,
   Tag,
+  UserCog,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -47,6 +48,7 @@ const items = [
   { title: 'Marcas', url: '/brands', icon: Tag },
   { title: 'Inventário', url: '/inventory', icon: Package },
   { title: 'Manutenção', url: '/maintenance', icon: Wrench },
+  { title: 'Técnicos', url: '/technicians', icon: UserCog },
   { title: 'Fornecedores', url: '/suppliers', icon: Truck },
   { title: 'Contratos', url: '/contracts', icon: FileText },
   { title: 'Garantias', url: '/warranties', icon: ShieldCheck },

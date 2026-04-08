@@ -125,6 +125,7 @@ export default function Maintenance() {
     assets: [] as any[],
     suppliers: [] as any[],
     warranties: [] as any[],
+    technicians: [] as any[],
   })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external' | 'ticket'>('ticket')
@@ -145,14 +146,15 @@ export default function Maintenance() {
     primaryChannel: '',
     status: 'Aberto',
     technician: '',
+    technician_id: 'none',
   })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [mRes, aRes, sRes, wRes] = await Promise.all([
+    const [mRes, aRes, sRes, wRes, tRes] = await Promise.all([
       supabase
         .from('maintenances')
-        .select('*, assets(name)')
+        .select('*, assets(name), technicians(name)')
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }),
       supabase.from('assets').select('*').eq('company_id', activeCompanyId).order('name'),
@@ -161,12 +163,14 @@ export default function Maintenance() {
         .from('warranties')
         .select('*, warranty_suppliers(supplier_id)')
         .eq('company_id', activeCompanyId),
+      supabase.from('technicians').select('*').eq('company_id', activeCompanyId).order('name'),
     ])
     setData({
       maintenances: mRes.data || [],
       assets: aRes.data || [],
       suppliers: sRes.data || [],
       warranties: wRes.data || [],
+      technicians: tRes.data || [],
     })
   }
 
@@ -219,6 +223,7 @@ export default function Maintenance() {
         primaryChannel: '',
         status: m.status || 'Aberto',
         technician: m.technician || '',
+        technician_id: m.technician_id || 'none',
       })
     } else {
       setEditingId(null)
@@ -244,6 +249,7 @@ export default function Maintenance() {
         primaryChannel: '',
         status: 'Aberto',
         technician: '',
+        technician_id: 'none',
       })
     }
     setDialogOpen(true)
@@ -289,6 +295,7 @@ export default function Maintenance() {
       end_date: formData.end_date || null,
       status: formData.status,
       technician: formData.technician,
+      technician_id: formData.technician_id !== 'none' ? formData.technician_id : null,
     }
 
     if (callMode === 'quick') {
@@ -456,7 +463,7 @@ export default function Maintenance() {
                         ? new Date(m.end_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
                         : '-'}
                     </TableCell>
-                    <TableCell>{m.technician}</TableCell>
+                    <TableCell>{m.technicians?.name || m.technician || '-'}</TableCell>
                     <TableCell>
                       <EventStatusBadge status={m.status || 'Aberto'} />
                     </TableCell>
@@ -615,11 +622,37 @@ export default function Maintenance() {
               </div>
               <div className="space-y-2">
                 <Label>Responsável / Técnico</Label>
-                <Input
-                  value={formData.technician}
-                  onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
-                  placeholder="Nome do responsável..."
-                />
+                <Select
+                  value={formData.technician_id}
+                  onValueChange={(v) => {
+                    const tech = data.technicians.find((t) => t.id === v)
+                    setFormData({
+                      ...formData,
+                      technician_id: v,
+                      technician: tech ? tech.name : '',
+                    })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um técnico..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não informado / Manual</SelectItem>
+                    {data.technicians.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.specialty || t.type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.technician_id === 'none' && (
+                  <Input
+                    className="mt-2"
+                    value={formData.technician}
+                    onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
+                    placeholder="Ou digite o nome manualmente..."
+                  />
+                )}
               </div>
             </div>
 
