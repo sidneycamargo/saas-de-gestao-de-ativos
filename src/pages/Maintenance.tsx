@@ -123,7 +123,7 @@ function EventStatusBadge({ status }: { status: string }) {
 
 export default function Maintenance() {
   const { activeCompanyId } = useCompanyStore()
-  const { session, profile } = useAuth()
+  const { session } = useAuth()
   const [userRole, setUserRole] = useState<string>('Member')
 
   const [data, setData] = useState({
@@ -132,6 +132,7 @@ export default function Maintenance() {
     suppliers: [] as any[],
     warranties: [] as any[],
     technicians: [] as any[],
+    contracts: [] as any[],
   })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [callMode, setCallMode] = useState<
@@ -141,6 +142,7 @@ export default function Maintenance() {
 
   const [formData, setFormData] = useState({
     assetId: '',
+    contractId: '',
     supplierId: '',
     isWarranty: false,
     type: 'Abertura de Chamado',
@@ -159,12 +161,14 @@ export default function Maintenance() {
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [mRes, aRes, sRes, wRes, tRes] = await Promise.all([
+    const [mRes, aRes, sRes, wRes, tRes, cRes] = await Promise.all([
       supabase
         .from('maintenances')
-        .select('*, assets(name), technicians(name)')
+        .select(
+          '*, assets(name), technicians(name), contracts:contract_id(identifier, suppliers(name))',
+        )
         .eq('company_id', activeCompanyId)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false }) as Promise<any>,
       supabase.from('assets').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
       supabase
@@ -172,6 +176,11 @@ export default function Maintenance() {
         .select('*, warranty_suppliers(supplier_id)')
         .eq('company_id', activeCompanyId),
       supabase.from('technicians').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase
+        .from('contracts')
+        .select('*, suppliers(name)')
+        .eq('company_id', activeCompanyId)
+        .order('identifier'),
     ])
     setData({
       maintenances: mRes.data || [],
@@ -179,6 +188,7 @@ export default function Maintenance() {
       suppliers: sRes.data || [],
       warranties: wRes.data || [],
       technicians: tRes.data || [],
+      contracts: cRes.data || [],
     })
   }
 
@@ -221,9 +231,10 @@ export default function Maintenance() {
       setEditingId(m.id)
       setFormData({
         assetId: m.asset_id || '',
+        contractId: m.contract_id || '',
         supplierId: m.supplier_id || '',
         isWarranty: m.is_warranty || false,
-        type: m.type || 'Corretiva',
+        type: m.type || 'Manutenção Corretiva',
         start_date: m.start_date || m.date || new Date().toISOString().split('T')[0],
         forecast_date: m.forecast_date || '',
         end_date: m.end_date || '',
@@ -240,6 +251,7 @@ export default function Maintenance() {
       setEditingId(null)
       setFormData({
         assetId: '',
+        contractId: '',
         supplierId: '',
         isWarranty: false,
         type:
@@ -247,7 +259,7 @@ export default function Maintenance() {
             ? 'Abertura de Chamado'
             : mode === 'preventive'
               ? 'Manutenção Preventiva'
-              : 'Corretiva',
+              : 'Manutenção Corretiva',
         start_date: new Date().toISOString().split('T')[0],
         forecast_date: '',
         end_date: '',
@@ -277,7 +289,7 @@ export default function Maintenance() {
     if (m.type === 'Abertura de Chamado') openDialog('ticket', m)
     else if (m.type === 'Solicitação') openDialog('quick', m)
     else if (m.type === 'Suporte Técnico' || m.type === 'Chamado Externo') openDialog('external', m)
-    else if (m.type === 'Manutenção Preventiva') openDialog('preventive', m)
+    else if (m.type === 'Manutenção Preventiva' || m.contract_id) openDialog('preventive', m)
     else openDialog('internal', m)
   }
 
@@ -296,7 +308,13 @@ export default function Maintenance() {
   }
 
   const handleSave = async () => {
-    if (!formData.assetId)
+    if (callMode === 'preventive' && !formData.contractId)
+      return toast({
+        title: 'Atenção',
+        description: 'Selecione um contrato para a manutenção preventiva.',
+        variant: 'destructive',
+      })
+    if (callMode !== 'preventive' && !formData.assetId)
       return toast({
         title: 'Atenção',
         description: 'Selecione um ativo.',
@@ -305,7 +323,8 @@ export default function Maintenance() {
 
     let payload: any = {
       company_id: activeCompanyId,
-      asset_id: formData.assetId,
+      asset_id: callMode !== 'preventive' ? formData.assetId : null,
+      contract_id: callMode === 'preventive' ? formData.contractId : null,
       description: formData.description,
       priority: formData.priority,
       origin: formData.origin,
@@ -329,7 +348,7 @@ export default function Maintenance() {
       payload.is_warranty = formData.isWarranty
       if (!editingId && !formData.technician) payload.technician = 'Suporte Interno'
     } else if (callMode === 'internal') {
-      payload.type = formData.type
+      payload.type = 'Manutenção Corretiva'
       if (!editingId && !formData.technician) payload.technician = 'Interno'
     } else if (callMode === 'external') {
       if (!formData.supplierId && !editingId && !formData.isWarranty)
@@ -412,13 +431,13 @@ export default function Maintenance() {
               <AlertCircle className="w-4 h-4 mr-2" /> Relato de Problema Rápido
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('internal')}>
-              <Wrench className="w-4 h-4 mr-2" /> Manutenção / OS Interna
+              <Wrench className="w-4 h-4 mr-2" /> Manutenção Corretiva (Por Ativo)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('external')}>
               <Activity className="w-4 h-4 mr-2" /> Suporte Técnico Externo
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('preventive')}>
-              <CalendarIcon className="w-4 h-4 mr-2" /> Agendamento Preventivo
+              <CalendarIcon className="w-4 h-4 mr-2" /> Manutenção Preventiva (Por Contrato)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -432,7 +451,7 @@ export default function Maintenance() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Ativo</TableHead>
+                <TableHead>Ativo / Contrato</TableHead>
                 <TableHead>Evento / Origem</TableHead>
                 <TableHead>Início</TableHead>
                 <TableHead>Previsão</TableHead>
@@ -447,7 +466,13 @@ export default function Maintenance() {
                 data.maintenances.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">
-                      <div>{m.assets?.name}</div>
+                      {m.contract_id && m.contracts ? (
+                        <div className="text-primary font-semibold">
+                          Contrato: {m.contracts.identifier || 'Sem identificador'}
+                        </div>
+                      ) : (
+                        <div>{m.assets?.name || 'Ativo Removido'}</div>
+                      )}
                       {m.description && (
                         <div
                           className="text-xs text-muted-foreground truncate max-w-[200px]"
@@ -532,51 +557,77 @@ export default function Maintenance() {
             <DialogTitle>
               {editingId ? 'Editar Evento' : callMode === 'quick' && 'Relato de Problema Rápido'}
               {!editingId && callMode === 'ticket' && 'Abertura de Chamado'}
-              {!editingId && callMode === 'internal' && 'Nova OS / Manutenção Interna'}
+              {!editingId && callMode === 'internal' && 'Nova Manutenção Corretiva (Por Ativo)'}
               {!editingId && callMode === 'external' && 'Acionar Suporte Técnico'}
-              {!editingId && callMode === 'preventive' && 'Agendamento de Manutenção Preventiva'}
+              {!editingId &&
+                callMode === 'preventive' &&
+                'Agendamento de Manutenção Preventiva (Por Contrato)'}
             </DialogTitle>
             <DialogDescription>
-              Preencha as informações do evento para manter o histórico do ativo organizado.
+              Preencha as informações do evento para manter o histórico de manutenção organizado.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Ativo *</Label>
-              <Select
-                value={formData.assetId}
-                onValueChange={(v) => {
-                  let nextSupplierId = formData.supplierId
-                  const activeWs = data.warranties.filter(
-                    (w) => w.asset_id === v && isWarrantyActive(w),
-                  )
-                  const sids = activeWs.flatMap(
-                    (w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
-                  )
-                  if (sids.length > 0 && (!nextSupplierId || !sids.includes(nextSupplierId))) {
-                    nextSupplierId = sids[0]
-                  }
-                  setFormData({ ...formData, assetId: v, supplierId: nextSupplierId })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o ativo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {data.assets.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {callMode === 'preventive' ? (
+              <div className="space-y-2">
+                <Label>Contrato *</Label>
+                <Select
+                  value={formData.contractId}
+                  onValueChange={(v) => setFormData({ ...formData, contractId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o contrato..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.contracts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.identifier || 'Sem Identificador'} (
+                        {c.suppliers?.name || 'Fornecedor N/A'}) -{' '}
+                        {c.preventive_maintenance_period || 'Sem periodicidade'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Ativo *</Label>
+                <Select
+                  value={formData.assetId}
+                  onValueChange={(v) => {
+                    let nextSupplierId = formData.supplierId
+                    const activeWs = data.warranties.filter(
+                      (w) => w.asset_id === v && isWarrantyActive(w),
+                    )
+                    const sids = activeWs.flatMap(
+                      (w) => w.warranty_suppliers?.map((ws: any) => ws.supplier_id) || [],
+                    )
+                    if (sids.length > 0 && (!nextSupplierId || !sids.includes(nextSupplierId))) {
+                      nextSupplierId = sids[0]
+                    }
+                    setFormData({ ...formData, assetId: v, supplierId: nextSupplierId })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o ativo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.assets.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name} {a.patrimony ? `(${a.patrimony})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {warrantySupplierIds.length > 0 &&
               formData.assetId &&
               callMode !== 'external' &&
-              callMode !== 'ticket' && (
+              callMode !== 'ticket' &&
+              callMode !== 'preventive' && (
                 <div className="bg-primary/10 text-primary p-3 rounded-md flex items-start gap-2">
                   <ShieldCheck className="w-5 h-5 shrink-0" />
                   <div className="text-sm">
@@ -705,19 +756,8 @@ export default function Maintenance() {
 
             {callMode === 'internal' && (
               <div className="space-y-2">
-                <Label>Tipo de OS / Manutenção</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(v) => setFormData({ ...formData, type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Preventiva">Preventiva</SelectItem>
-                    <SelectItem value="Corretiva">Corretiva</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Tipo</Label>
+                <Input value="Manutenção Corretiva" disabled />
               </div>
             )}
 
@@ -827,7 +867,7 @@ export default function Maintenance() {
             </div>
 
             <div className="space-y-2">
-              <Label>Descrição / Sintomas</Label>
+              <Label>Descrição / Sintomas / Observações</Label>
               <Textarea
                 placeholder="Descreva os detalhes do evento ou problema..."
                 value={formData.description}
