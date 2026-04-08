@@ -157,7 +157,8 @@ export default function Maintenance() {
     forecast_date: '',
     end_date: '',
     description: '',
-    execution_notes: '',
+    execution_logs: [] as any[],
+    new_execution_note: '',
     priority: 'Média',
     origin: 'Manual',
     channels: [] as string[],
@@ -180,7 +181,7 @@ export default function Maintenance() {
       supabase
         .from('maintenances')
         .select(
-          '*, assets(name), technicians(name), contracts:contract_id(identifier, suppliers(name)), maintenance_assets(*, assets(name, patrimony))',
+          '*, assets(name), technicians(name), contracts:contract_id(identifier, suppliers(name)), maintenance_assets(*, assets(name, patrimony)), maintenance_logs(*, profiles(name))',
         )
         .eq('company_id', activeCompanyId)
         .order('created_at', { ascending: false }) as Promise<any>,
@@ -254,7 +255,11 @@ export default function Maintenance() {
         forecast_date: m.forecast_date || '',
         end_date: m.end_date || '',
         description: m.description || '',
-        execution_notes: m.execution_notes || '',
+        execution_logs:
+          m.maintenance_logs?.sort(
+            (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          ) || [],
+        new_execution_note: '',
         priority: m.priority || 'Média',
         origin: m.origin || 'Manual',
         channels: [],
@@ -288,7 +293,8 @@ export default function Maintenance() {
         forecast_date: '',
         end_date: '',
         description: '',
-        execution_notes: '',
+        execution_logs: [],
+        new_execution_note: '',
         priority: 'Média',
         origin:
           mode === 'quick'
@@ -352,7 +358,6 @@ export default function Maintenance() {
       asset_id: callMode !== 'preventive' ? formData.assetId : null,
       contract_id: callMode === 'preventive' ? formData.contractId : null,
       description: formData.description,
-      execution_notes: formData.execution_notes,
       priority: formData.priority,
       origin: formData.origin,
       start_date: formData.start_date || null,
@@ -408,6 +413,23 @@ export default function Maintenance() {
       const { data, error } = await supabase.from('maintenances').insert(payload).select().single()
       if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
       savedMaintenanceId = data.id
+    }
+
+    if (savedMaintenanceId && formData.new_execution_note.trim()) {
+      const { error: logError } = await supabase.from('maintenance_logs' as any).insert({
+        company_id: activeCompanyId,
+        maintenance_id: savedMaintenanceId,
+        user_id: session?.user?.id,
+        note: formData.new_execution_note.trim(),
+      })
+      if (logError) {
+        console.error(logError)
+        toast({
+          title: 'Erro ao salvar anotação',
+          description: logError.message,
+          variant: 'destructive',
+        })
+      }
     }
 
     if (savedMaintenanceId && formData.maintenanceAssets.length > 0) {
@@ -966,14 +988,42 @@ export default function Maintenance() {
                   rows={2}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Anotações da Execução (Pós-Evento)</Label>
-                <Textarea
-                  placeholder="Descreva anotações gerais sobre a execução, procedimentos realizados ou pendências..."
-                  value={formData.execution_notes}
-                  onChange={(e) => setFormData({ ...formData, execution_notes: e.target.value })}
-                  rows={2}
-                />
+              <div className="space-y-4">
+                <Label>Histórico de Execução (Pós-Evento)</Label>
+
+                {formData.execution_logs && formData.execution_logs.length > 0 && (
+                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
+                    {formData.execution_logs.map((log: any) => (
+                      <div key={log.id} className="bg-slate-50 p-3 rounded-md border text-sm">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-slate-700">
+                            {log.profiles?.name || 'Usuário'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 whitespace-pre-wrap">{log.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-sm">
+                    {formData.execution_logs?.length
+                      ? 'Adicionar nova anotação'
+                      : 'Anotação inicial da execução'}
+                  </Label>
+                  <Textarea
+                    placeholder="Descreva procedimentos realizados, peças trocadas ou pendências..."
+                    value={formData.new_execution_note}
+                    onChange={(e) =>
+                      setFormData({ ...formData, new_execution_note: e.target.value })
+                    }
+                    rows={2}
+                  />
+                </div>
               </div>
             </div>
 
