@@ -121,6 +121,27 @@ export default function AssetNew() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="product">Produto Base (Catálogo) *</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Combobox
+                      options={products.map((p) => ({
+                        label: `${p.name} ${p.model ? `(${p.model})` : ''}`,
+                        value: p.id,
+                      }))}
+                      value={formData.product_id}
+                      onChange={(v) => setFormData({ ...formData, product_id: v })}
+                      placeholder="Selecione o produto base..."
+                      emptyText="Nenhum produto encontrado. Cadastre em Produtos."
+                    />
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => navigate('/products')}>
+                    Catálogo
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="name">Descrição do Ativo</Label>
                 <Input
                   id="name"
@@ -140,27 +161,6 @@ export default function AssetNew() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="product">Produto Base (Catálogo) *</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Combobox
-                      options={products.map((p) => ({
-                        label: `${p.name} ${p.model ? `(${p.model})` : ''}`,
-                        value: p.id,
-                      }))}
-                      value={formData.product_id}
-                      onChange={(v) => setFormData({ ...formData, product_id: v })}
-                      placeholder="Selecione o produto base..."
-                      emptyText="Nenhum produto encontrado. Cadastre em Produtos."
-                    />
-                  </div>
-                  <Button type="button" variant="outline" onClick={() => navigate('/products')}>
-                    Catálogo
-                  </Button>
-                </div>
               </div>
 
               <div className="space-y-2">
