@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import useCompanyStore from '@/stores/useCompanyStore'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
@@ -37,6 +38,7 @@ export default function Contracts() {
   const { activeCompanyId } = useCompanyStore()
   const [contracts, setContracts] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
+  const [assetsList, setAssetsList] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -49,20 +51,27 @@ export default function Contracts() {
     end_date: '',
     renewal_within: false,
     renewal_after: false,
+    selected_assets: [] as string[],
   })
 
   const fetchData = async () => {
     if (!activeCompanyId) return
-    const [cRes, sRes] = await Promise.all([
+    const [cRes, sRes, aRes] = await Promise.all([
       supabase
         .from('contracts')
-        .select('*, suppliers(name), assets(id)')
+        .select('*, suppliers(name), assets(id, name, patrimony)')
         .eq('company_id', activeCompanyId)
         .order('registration_date', { ascending: false }),
       supabase.from('suppliers').select('*').eq('company_id', activeCompanyId).order('name'),
+      supabase
+        .from('assets')
+        .select('id, name, patrimony, contract_id')
+        .eq('company_id', activeCompanyId)
+        .order('name'),
     ])
     if (cRes.data) setContracts(cRes.data)
     if (sRes.data) setSuppliers(sRes.data)
+    if (aRes.data) setAssetsList(aRes.data)
   }
 
   useEffect(() => {
@@ -81,6 +90,7 @@ export default function Contracts() {
         end_date: con.end_date || '',
         renewal_within: con.renewal_within,
         renewal_after: con.renewal_after,
+        selected_assets: con.assets?.map((a: any) => a.id) || [],
       })
     } else {
       setEditingId(null)
@@ -93,6 +103,7 @@ export default function Contracts() {
         end_date: '',
         renewal_within: false,
         renewal_after: false,
+        selected_assets: [],
       })
     }
     setIsOpen(true)
@@ -100,24 +111,64 @@ export default function Contracts() {
 
   const handleSave = async () => {
     if (!formData.supplier_id) return
+
+    const contractData = {
+      identifier: formData.identifier,
+      description: formData.description,
+      supplier_id: formData.supplier_id,
+      registration_date: formData.registration_date || null,
+      start_date: formData.start_date || null,
+      end_date: formData.end_date || null,
+      renewal_within: formData.renewal_within,
+      renewal_after: formData.renewal_after,
+    }
+
     if (editingId) {
-      const { error } = await supabase.from('contracts').update(formData).eq('id', editingId)
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Contrato atualizado' })
-        setIsOpen(false)
-        fetchData()
+      const { error } = await supabase.from('contracts').update(contractData).eq('id', editingId)
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+        return
       }
+
+      const previouslyLinked =
+        contracts.find((c) => c.id === editingId)?.assets?.map((a: any) => a.id) || []
+      const toUnlink = previouslyLinked.filter(
+        (id: string) => !formData.selected_assets.includes(id),
+      )
+      const toLink = formData.selected_assets.filter((id: string) => !previouslyLinked.includes(id))
+
+      if (toUnlink.length > 0) {
+        await supabase.from('assets').update({ contract_id: null }).in('id', toUnlink)
+      }
+      if (toLink.length > 0) {
+        await supabase.from('assets').update({ contract_id: editingId }).in('id', toLink)
+      }
+
+      toast({ title: 'Contrato atualizado' })
+      setIsOpen(false)
+      fetchData()
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('contracts')
-        .insert({ ...formData, company_id: activeCompanyId })
-      if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      else {
-        toast({ title: 'Contrato cadastrado' })
-        setIsOpen(false)
-        fetchData()
+        .insert({ ...contractData, company_id: activeCompanyId })
+        .select()
+        .single()
+
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+        return
       }
+
+      if (formData.selected_assets.length > 0 && data) {
+        await supabase
+          .from('assets')
+          .update({ contract_id: data.id })
+          .in('id', formData.selected_assets)
+      }
+
+      toast({ title: 'Contrato cadastrado' })
+      setIsOpen(false)
+      fetchData()
     }
   }
 
@@ -291,6 +342,59 @@ export default function Contracts() {
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Ativos Vinculados</Label>
+              <ScrollArea className="h-[200px] w-full border rounded-md p-4">
+                <div className="space-y-4">
+                  {assetsList.map((asset) => {
+                    const isLinkedToOther = asset.contract_id && asset.contract_id !== editingId
+                    return (
+                      <div key={asset.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`asset-${asset.id}`}
+                          checked={formData.selected_assets.includes(asset.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                selected_assets: [...formData.selected_assets, asset.id],
+                              })
+                            } else {
+                              setFormData({
+                                ...formData,
+                                selected_assets: formData.selected_assets.filter(
+                                  (id) => id !== asset.id,
+                                ),
+                              })
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`asset-${asset.id}`}
+                          className="flex items-center gap-2 cursor-pointer font-normal"
+                        >
+                          <span>
+                            {asset.name} {asset.patrimony ? `(${asset.patrimony})` : ''}
+                          </span>
+                          {isLinkedToOther && !formData.selected_assets.includes(asset.id) && (
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              Em outro contrato
+                            </span>
+                          )}
+                        </Label>
+                      </div>
+                    )
+                  })}
+                  {assetsList.length === 0 && (
+                    <div className="text-sm text-muted-foreground">Nenhum ativo encontrado.</div>
+                  )}
+                </div>
+              </ScrollArea>
+              <p className="text-xs text-muted-foreground">
+                Selecione os equipamentos que são cobertos por este contrato.
+              </p>
             </div>
 
             <div className="space-y-3 mt-2 md:col-span-2 border-t pt-4">
