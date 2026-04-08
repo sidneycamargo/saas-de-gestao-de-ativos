@@ -109,6 +109,12 @@ function EventStatusBadge({ status }: { status: string }) {
           Aberto
         </Badge>
       )
+    case 'Agendado':
+      return (
+        <Badge variant="secondary" className="bg-teal-100 text-teal-700">
+          Agendado
+        </Badge>
+      )
     case 'Pendente':
     default:
       return <Badge variant="outline">{status || 'Pendente'}</Badge>
@@ -128,7 +134,9 @@ export default function Maintenance() {
     technicians: [] as any[],
   })
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [callMode, setCallMode] = useState<'quick' | 'internal' | 'external' | 'ticket'>('ticket')
+  const [callMode, setCallMode] = useState<
+    'quick' | 'internal' | 'external' | 'ticket' | 'preventive'
+  >('ticket')
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -204,7 +212,10 @@ export default function Maintenance() {
     })
   }
 
-  const openDialog = (mode: 'quick' | 'internal' | 'external' | 'ticket', m?: any) => {
+  const openDialog = (
+    mode: 'quick' | 'internal' | 'external' | 'ticket' | 'preventive',
+    m?: any,
+  ) => {
     setCallMode(mode)
     if (m) {
       setEditingId(m.id)
@@ -231,7 +242,12 @@ export default function Maintenance() {
         assetId: '',
         supplierId: '',
         isWarranty: false,
-        type: mode === 'ticket' ? 'Abertura de Chamado' : 'Corretiva',
+        type:
+          mode === 'ticket'
+            ? 'Abertura de Chamado'
+            : mode === 'preventive'
+              ? 'Manutenção Preventiva'
+              : 'Corretiva',
         start_date: new Date().toISOString().split('T')[0],
         forecast_date: '',
         end_date: '',
@@ -244,10 +260,12 @@ export default function Maintenance() {
               ? 'Planejamento'
               : mode === 'ticket'
                 ? 'Chamado'
-                : 'Acionamento Externo',
+                : mode === 'preventive'
+                  ? 'Contrato'
+                  : 'Acionamento Externo',
         channels: [],
         primaryChannel: '',
-        status: 'Aberto',
+        status: mode === 'preventive' ? 'Agendado' : 'Aberto',
         technician: '',
         technician_id: 'none',
       })
@@ -259,6 +277,7 @@ export default function Maintenance() {
     if (m.type === 'Abertura de Chamado') openDialog('ticket', m)
     else if (m.type === 'Solicitação') openDialog('quick', m)
     else if (m.type === 'Suporte Técnico' || m.type === 'Chamado Externo') openDialog('external', m)
+    else if (m.type === 'Manutenção Preventiva') openDialog('preventive', m)
     else openDialog('internal', m)
   }
 
@@ -300,6 +319,9 @@ export default function Maintenance() {
 
     if (callMode === 'quick') {
       payload.type = 'Solicitação'
+      if (!editingId && !formData.technician) payload.technician = 'A Definir'
+    } else if (callMode === 'preventive') {
+      payload.type = 'Manutenção Preventiva'
       if (!editingId && !formData.technician) payload.technician = 'A Definir'
     } else if (callMode === 'ticket') {
       payload.type = 'Abertura de Chamado'
@@ -394,6 +416,9 @@ export default function Maintenance() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('external')}>
               <Activity className="w-4 h-4 mr-2" /> Suporte Técnico Externo
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openDialog('preventive')}>
+              <CalendarIcon className="w-4 h-4 mr-2" /> Agendamento Preventivo
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -509,6 +534,7 @@ export default function Maintenance() {
               {!editingId && callMode === 'ticket' && 'Abertura de Chamado'}
               {!editingId && callMode === 'internal' && 'Nova OS / Manutenção Interna'}
               {!editingId && callMode === 'external' && 'Acionar Suporte Técnico'}
+              {!editingId && callMode === 'preventive' && 'Agendamento de Manutenção Preventiva'}
             </DialogTitle>
             <DialogDescription>
               Preencha as informações do evento para manter o histórico do ativo organizado.
@@ -563,7 +589,7 @@ export default function Maintenance() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Data de Início</Label>
+                <Label>{callMode === 'preventive' ? 'Data Agendada' : 'Data de Início'}</Label>
                 <div className="relative">
                   <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -612,6 +638,7 @@ export default function Maintenance() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Aberto">Aberto</SelectItem>
+                    <SelectItem value="Agendado">Agendado</SelectItem>
                     <SelectItem value="Pendente">Pendente</SelectItem>
                     <SelectItem value="Em Andamento">Em Andamento</SelectItem>
                     <SelectItem value="Aguardando Peças">Aguardando Peças</SelectItem>
@@ -691,6 +718,13 @@ export default function Maintenance() {
                     <SelectItem value="Corretiva">Corretiva</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {callMode === 'preventive' && (
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Input value="Manutenção Preventiva" disabled />
               </div>
             )}
 

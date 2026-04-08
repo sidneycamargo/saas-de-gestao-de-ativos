@@ -62,6 +62,7 @@ export default function Contracts() {
     end_date: '',
     renewal_within: false,
     renewal_after: false,
+    preventive_maintenance_period: '',
     selected_assets: [] as string[],
   })
 
@@ -101,6 +102,7 @@ export default function Contracts() {
         end_date: con.end_date || '',
         renewal_within: con.renewal_within,
         renewal_after: con.renewal_after,
+        preventive_maintenance_period: con.preventive_maintenance_period || '',
         selected_assets: con.assets?.map((a: any) => a.id) || [],
       })
     } else {
@@ -114,6 +116,7 @@ export default function Contracts() {
         end_date: '',
         renewal_within: false,
         renewal_after: false,
+        preventive_maintenance_period: '',
         selected_assets: [],
       })
     }
@@ -132,6 +135,10 @@ export default function Contracts() {
       end_date: formData.end_date || null,
       renewal_within: formData.renewal_within,
       renewal_after: formData.renewal_after,
+      preventive_maintenance_period:
+        formData.preventive_maintenance_period === 'none'
+          ? null
+          : formData.preventive_maintenance_period || null,
     }
 
     if (editingId) {
@@ -214,6 +221,7 @@ export default function Contracts() {
                 <TableHead>Identificador / Fornecedor</TableHead>
                 <TableHead>Vigência</TableHead>
                 <TableHead>Ativos Vinculados</TableHead>
+                <TableHead>Manutenção Preventiva</TableHead>
                 <TableHead>Renovação</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -244,6 +252,13 @@ export default function Contracts() {
                         {c.assets?.length || 0}
                       </Badge>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {c.preventive_maintenance_period ? (
+                      <Badge variant="outline">{c.preventive_maintenance_period}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="space-y-1">
                     {c.renewal_within && (
@@ -277,7 +292,7 @@ export default function Contracts() {
               ))}
               {contracts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Nenhum contrato cadastrado.
                   </TableCell>
                 </TableRow>
@@ -353,6 +368,28 @@ export default function Contracts() {
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Periodicidade de Manutenção Preventiva</Label>
+              <Select
+                value={formData.preventive_maintenance_period || 'none'}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, preventive_maintenance_period: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a periodicidade..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  <SelectItem value="Quinzenal">Quinzenal</SelectItem>
+                  <SelectItem value="Mensal">Mensal</SelectItem>
+                  <SelectItem value="Trimestral">Trimestral</SelectItem>
+                  <SelectItem value="Semestral">Semestral</SelectItem>
+                  <SelectItem value="Anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-4 md:col-span-2">
