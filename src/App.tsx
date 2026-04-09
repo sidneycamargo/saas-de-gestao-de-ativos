@@ -31,6 +31,7 @@ import Reports from './pages/Reports'
 import AdminCompanies from './pages/admin/Companies'
 import AdminSubscriptions from './pages/admin/Subscriptions'
 import AdminUsers from './pages/admin/Users'
+import AdminRoles from './pages/admin/Roles'
 
 const App = () => (
   <AuthProvider>
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/roles" element={<AdminRoles />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
