@@ -47,7 +47,6 @@ export default function AdminUsers() {
 
   const [formCompany, setFormCompany] = useState('')
   const [formRole, setFormRole] = useState('Member')
-  const [formGroup, setFormGroup] = useState('none')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -60,6 +59,7 @@ export default function AdminUsers() {
     phone: '',
     password: '',
     is_super_admin: false,
+    group_id: 'none',
     company_id: '',
     role: 'Member',
   })
@@ -81,6 +81,7 @@ export default function AdminUsers() {
       .select('company_id')
       .eq('user_id', profile!.id)
       .eq('role', 'Admin')
+
     if (data && data.length > 0) {
       setHasAccess(true)
       await fetchAll(
@@ -98,22 +99,16 @@ export default function AdminUsers() {
       setCompanies(comps)
       const mComps = isSuperAdmin ? comps : comps.filter((c) => adminCompanyIds.includes(c.id))
       setManagedCompanies(mComps)
+    }
 
-      const { data: grps } = await supabase
-        .from('groups')
-        .select('id, name, company_id')
-        .in(
-          'company_id',
-          mComps.map((c) => c.id),
-        )
+    if (isSuperAdmin) {
+      const { data: grps } = await supabase.from('groups').select('id, name').order('name')
       if (grps) setGroups(grps)
     }
 
     const { data: profs } = await supabase
       .from('profiles')
-      .select(
-        '*, company_memberships(id, company_id, role, group_id, companies(name), groups(name))',
-      )
+      .select('*, groups(name), company_memberships(id, company_id, role, companies(name))')
       .order('name')
 
     if (profs) {
@@ -128,7 +123,7 @@ export default function AdminUsers() {
   const fetchMemberships = async (userId: string) => {
     const { data } = await supabase
       .from('company_memberships')
-      .select('*, companies(name), groups(name)')
+      .select('*, companies(name)')
       .eq('user_id', userId)
     if (data) setMemberships(data)
   }
@@ -138,7 +133,6 @@ export default function AdminUsers() {
     fetchMemberships(u.id)
     setFormCompany('')
     setFormRole('Member')
-    setFormGroup('none')
   }
 
   const handleAddAccess = async () => {
@@ -148,7 +142,6 @@ export default function AdminUsers() {
         user_id: accessUser.id,
         company_id: formCompany,
         role: formRole,
-        group_id: formGroup === 'none' ? null : formGroup,
       })
       if (error) throw error
       toast({ title: 'Acesso concedido' })
@@ -195,9 +188,9 @@ export default function AdminUsers() {
       phone: '',
       password: '',
       is_super_admin: false,
+      group_id: 'none',
       company_id: managedCompanies[0]?.id || '',
       role: 'Member',
-      group_id: 'none',
     })
     setIsModalOpen(true)
   }
@@ -211,9 +204,9 @@ export default function AdminUsers() {
       phone: u.phone || '',
       password: '',
       is_super_admin: u.is_super_admin,
+      group_id: u.group_id || 'none',
       company_id: '',
       role: 'Member',
-      group_id: 'none',
     })
     setIsModalOpen(true)
   }
@@ -225,17 +218,19 @@ export default function AdminUsers() {
     }
     setSaving(true)
     try {
+      const payloadData = {
+        ...formData,
+        group_id: formData.group_id === 'none' ? null : formData.group_id,
+      }
+
       const payload = isCreating
         ? {
             action: 'CREATE',
-            payload: {
-              ...formData,
-              group_id: formData.group_id === 'none' ? null : formData.group_id,
-            },
+            payload: payloadData,
           }
         : {
             action: 'UPDATE',
-            payload: { id: selectedUser.id, ...formData },
+            payload: { id: selectedUser.id, ...payloadData },
           }
 
       const { data, error } = await supabase.functions.invoke('manage-users', {
@@ -290,11 +285,13 @@ export default function AdminUsers() {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button variant="outline" asChild>
-            <Link to="/admin/roles">
-              <Shield className="w-4 h-4 mr-2" /> Gerenciar Papéis
-            </Link>
-          </Button>
+          {profile?.is_super_admin && (
+            <Button variant="outline" asChild>
+              <Link to="/admin/roles">
+                <Shield className="w-4 h-4 mr-2" /> Gerenciar Papéis Globais
+              </Link>
+            </Button>
+          )}
           <Button onClick={openCreate} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="w-4 h-4 mr-2" /> Novo Usuário
           </Button>
@@ -310,6 +307,7 @@ export default function AdminUsers() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Empresas</TableHead>
+                  {profile?.is_super_admin && <TableHead>Papel Global</TableHead>}
                   <TableHead>Admin</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -326,13 +324,21 @@ export default function AdminUsers() {
                           {u.company_memberships?.map((m: any) => (
                             <Badge key={m.id} variant="outline" className="text-xs flex gap-1">
                               {m.companies?.name} ({m.role})
-                              {m.groups?.name && (
-                                <span className="text-amber-600">[{m.groups.name}]</span>
-                              )}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
+                      {profile?.is_super_admin && (
+                        <TableCell>
+                          {u.groups?.name ? (
+                            <Badge variant="outline" className="border-amber-500 text-amber-600">
+                              {u.groups.name}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         {u.is_super_admin ? (
                           <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">
@@ -380,7 +386,10 @@ export default function AdminUsers() {
                 })}
                 {users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell
+                      colSpan={profile?.is_super_admin ? 6 : 5}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       Nenhum usuário encontrado.
                     </TableCell>
                   </TableRow>
@@ -463,40 +472,47 @@ export default function AdminUsers() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 col-span-2 sm:col-span-1">
-                  <Label>Papel / Regra</Label>
-                  <Select
-                    value={formData.group_id}
-                    onValueChange={(v) => setFormData({ ...formData, group_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {groups
-                        .filter((g) => g.company_id === formData.company_id)
-                        .map((g) => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {g.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             )}
 
             {profile?.is_super_admin && (
-              <div className="flex items-center space-x-2 pt-2">
-                <Checkbox
-                  id="super"
-                  checked={formData.is_super_admin}
-                  onCheckedChange={(c: boolean) => setFormData({ ...formData, is_super_admin: c })}
-                />
-                <Label htmlFor="super" className="cursor-pointer">
-                  Acesso Super Admin
-                </Label>
+              <div className="space-y-4 pt-4 border-t mt-4">
+                <h4 className="font-medium text-sm">Privilégios Globais</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Papel / Regra Global</Label>
+                    <Select
+                      value={formData.group_id}
+                      onValueChange={(v) => setFormData({ ...formData, group_id: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <div className="flex items-center space-x-2 pt-4">
+                      <Checkbox
+                        id="super"
+                        checked={formData.is_super_admin}
+                        onCheckedChange={(c: boolean) =>
+                          setFormData({ ...formData, is_super_admin: c })
+                        }
+                      />
+                      <Label htmlFor="super" className="cursor-pointer">
+                        Acesso Super Admin
+                      </Label>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -546,24 +562,6 @@ export default function AdminUsers() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 w-full sm:w-[180px]">
-                <Label>Papel Customizado</Label>
-                <Select value={formGroup} onValueChange={setFormGroup} disabled={!formCompany}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Opcional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {groups
-                      .filter((g) => g.company_id === formCompany)
-                      .map((g) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <Button
                 onClick={handleAddAccess}
                 disabled={!formCompany}
@@ -587,16 +585,9 @@ export default function AdminUsers() {
                     <TableRow key={m.id}>
                       <TableCell>{m.companies?.name}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          <Badge variant={m.role === 'Admin' ? 'default' : 'secondary'}>
-                            {m.role}
-                          </Badge>
-                          {m.groups?.name && (
-                            <Badge variant="outline" className="border-amber-500 text-amber-600">
-                              {m.groups.name}
-                            </Badge>
-                          )}
-                        </div>
+                        <Badge variant={m.role === 'Admin' ? 'default' : 'secondary'}>
+                          {m.role}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

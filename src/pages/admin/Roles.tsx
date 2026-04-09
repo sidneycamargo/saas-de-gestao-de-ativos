@@ -21,14 +21,6 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
@@ -46,7 +38,6 @@ type PermAction = 'read' | 'write' | 'delete'
 export default function AdminRoles() {
   const { profile } = useAuth()
   const [hasAccess, setHasAccess] = useState<boolean | null>(null)
-  const [managedCompanies, setManagedCompanies] = useState<any[]>([])
   const [roles, setRoles] = useState<any[]>([])
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -56,56 +47,23 @@ export default function AdminRoles() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    company_id: '',
     permissions: JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)),
   })
 
   useEffect(() => {
-    if (profile) checkAccessAndFetch()
+    if (profile) {
+      if (profile.is_super_admin) {
+        setHasAccess(true)
+        fetchAll()
+      } else {
+        setHasAccess(false)
+      }
+    }
   }, [profile])
 
-  const checkAccessAndFetch = async () => {
-    if (profile?.is_super_admin) {
-      setHasAccess(true)
-      await fetchAll(true, [])
-      return
-    }
-    const { data } = await supabase
-      .from('company_memberships')
-      .select('company_id')
-      .eq('user_id', profile!.id)
-      .eq('role', 'Admin')
-
-    if (data && data.length > 0) {
-      setHasAccess(true)
-      await fetchAll(
-        false,
-        data.map((d) => d.company_id),
-      )
-    } else {
-      setHasAccess(false)
-    }
-  }
-
-  const fetchAll = async (isSuperAdmin: boolean, adminCompanyIds: string[]) => {
-    const { data: comps } = await supabase.from('companies').select('id, name').order('name')
-    let mComps: any[] = []
-    if (comps) {
-      mComps = isSuperAdmin ? comps : comps.filter((c) => adminCompanyIds.includes(c.id))
-      setManagedCompanies(mComps)
-    }
-
-    if (mComps.length > 0) {
-      const { data: rls } = await supabase
-        .from('groups')
-        .select('*, companies(name)')
-        .in(
-          'company_id',
-          mComps.map((c) => c.id),
-        )
-        .order('name')
-      if (rls) setRoles(rls)
-    }
+  const fetchAll = async () => {
+    const { data: rls } = await supabase.from('groups').select('*').order('name')
+    if (rls) setRoles(rls)
   }
 
   if (hasAccess === false) return <Navigate to="/" />
@@ -118,7 +76,6 @@ export default function AdminRoles() {
     setFormData({
       name: '',
       description: '',
-      company_id: managedCompanies[0]?.id || '',
       permissions: JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)),
     })
     setIsModalOpen(true)
@@ -130,7 +87,6 @@ export default function AdminRoles() {
     setFormData({
       name: r.name,
       description: r.description || '',
-      company_id: r.company_id,
       permissions: r.permissions
         ? { ...DEFAULT_PERMISSIONS, ...r.permissions }
         : JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)),
@@ -139,7 +95,7 @@ export default function AdminRoles() {
   }
 
   const handleSave = async () => {
-    if (!formData.name || !formData.company_id) {
+    if (!formData.name) {
       toast({ title: 'Preencha os campos obrigatórios', variant: 'destructive' })
       return
     }
@@ -149,7 +105,6 @@ export default function AdminRoles() {
         const { error } = await supabase.from('groups').insert({
           name: formData.name,
           description: formData.description,
-          company_id: formData.company_id,
           permissions: formData.permissions,
         })
         if (error) throw error
@@ -160,7 +115,6 @@ export default function AdminRoles() {
           .update({
             name: formData.name,
             description: formData.description,
-            company_id: formData.company_id,
             permissions: formData.permissions,
           })
           .eq('id', selectedRole.id)
@@ -168,7 +122,7 @@ export default function AdminRoles() {
         toast({ title: 'Papel atualizado com sucesso' })
       }
       setIsModalOpen(false)
-      checkAccessAndFetch()
+      fetchAll()
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' })
     }
@@ -180,7 +134,7 @@ export default function AdminRoles() {
       const { error } = await supabase.from('groups').delete().eq('id', id)
       if (error) throw error
       toast({ title: 'Papel excluído com sucesso' })
-      checkAccessAndFetch()
+      fetchAll()
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' })
     }
@@ -215,15 +169,15 @@ export default function AdminRoles() {
           </div>
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-indigo-600 dark:text-indigo-500">
-              Papéis e Permissões
+              Papéis e Regras Globais
             </h2>
             <p className="text-muted-foreground">
-              Crie perfis de acesso customizados para os usuários do sistema.
+              Defina perfis de acesso padronizados para todos os usuários do sistema.
             </p>
           </div>
         </div>
         <Button onClick={openCreate} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700">
-          <Plus className="w-4 h-4 mr-2" /> Novo Papel
+          <Plus className="w-4 h-4 mr-2" /> Novo Papel Global
         </Button>
       </div>
 
@@ -234,7 +188,6 @@ export default function AdminRoles() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Empresa</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -243,9 +196,6 @@ export default function AdminRoles() {
                 {roles.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{r.companies?.name}</Badge>
-                    </TableCell>
                     <TableCell className="text-muted-foreground">{r.description || '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -271,7 +221,7 @@ export default function AdminRoles() {
                 ))}
                 {roles.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                       Nenhum papel encontrado.
                     </TableCell>
                   </TableRow>
@@ -288,34 +238,13 @@ export default function AdminRoles() {
             <DialogTitle>{isCreating ? 'Novo Papel' : 'Editar Papel'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Técnico Sênior"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Empresa *</Label>
-                <Select
-                  value={formData.company_id}
-                  onValueChange={(v) => setFormData({ ...formData, company_id: v })}
-                  disabled={!isCreating && !profile?.is_super_admin}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managedCompanies.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Nome *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ex: Técnico Sênior"
+              />
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
